@@ -21,19 +21,92 @@ Ce projet simule un système de guidage routier, où une voiture est guidée à 
 
 Chaque membre de l’équipe doit créer une branche fonctionnelle basée sur `dev` pour travailler sur une partie spécifique du projet. Une fois une tâche terminée, il est nécessaire de soumettre une **pull request** pour fusionner la branche avec `dev`.
 
+
 ### Répartition des tâches
 
-| **Membre**        || **Branche Git**         || **Tâche**  
-|-------------------||-------------------------||
-| **Personne 1**    || `model-classes`         || Modélisation du système : Création des classes `GPS`, `Voiture`, `Route`, `Intersection`, `CarteVille` et Gestion des états des routes. 
-| **Personne 2**    || `pathfinding-algorithm` || Implémentation de l'algorithme de calcul de chemin : Choix et implémentation de l'algorithme de recherche de chemin (Dijkstra, A*). Gestion de l’impact des états des routes.
-| **Personne 3**    || `ui-map-display`        || Interface graphique de la carte : Création de la fenêtre principale.<br>Dessin du graphe, de la voiture, des routes et des événements. Mise à jour dynamique de l’affichage.
-| **Personne 4**    || `user-interaction`      || Interactions utilisateur : Gestion des boutons pour l'ajout d'événements (accident, recalcul). Affichage des instructions de navigation. Coordination avec le modèle. 
+<table border="1">
+  <tr>
+    <th><h3>Membre</h3></th>
+    <th><h3>Tâche</h3></th>
+    <th><h3>Branche Git</h3></th>
+  </tr>
+  <tr>
+    <td><strong>Membre 1</strong></td>
+    <td>
+      <strong>Tâche : Modélisation du système</strong><br>
+      <ul>
+        <li>Création des classes GPS, Voiture, Route, Intersection, CarteVille</li>
+        <li>Gestion des états des routes (fluide, congestionnée, accidentée)</li>
+      </ul>
+    </td>
+    <td><strong>Branche Git :</strong> model-classes</td>
+  </tr>
+  <tr>
+    <td><strong>Membre 2</strong></td>
+    <td>
+      <strong>Tâche : Implémentation de l'algorithme de calcul de chemin</strong><br>
+      <ul>
+        <li>Choix et implémentation de l'algorithme de recherche de chemin (Dijkstra, A*)</li>
+        <li>Gestion de l'impact des états des routes (par exemple, tenir compte des congestions et accidents)</li>
+      </ul>
+    </td>
+    <td><strong>Branche Git :</strong> pathfinding-algorithm</td>
+  </tr>
+  <tr>
+    <td><strong>Membre 3</strong></td>
+    <td>
+      <strong>Tâche : Interface graphique de la carte</strong><br>
+      <ul>
+        <li>Création de la fenêtre principale du système</li>
+        <li>Dessin du graphe, de la voiture, des routes et des événements</li>
+        <li>Mise à jour dynamique de l'affichage en fonction des changements</li>
+      </ul>
+    </td>
+    <td><strong>Branche Git :</strong> ui-map-display</td>
+  </tr>
+  <tr>
+    <td><strong>Membre 4</strong></td>
+    <td>
+      <strong>Tâche : Interactions utilisateur</strong><br>
+      <ul>
+        <li>Gestion des boutons pour l'ajout d'événements comme les accidents ou le recalcul du chemin</li>
+        <li>Affichage des instructions de navigation</li>
+        <li>Coordination entre l'interface graphique et le modèle de données</li>
+      </ul>
+    </td>
+    <td><strong>Branche Git :</strong> user-interaction</td>
+  </tr>
+  <tr>
+    <td><strong>Membre 5</strong></td>
+    <td>
+      <strong>Tâche : Gestion des données d'état en temps réel</strong><br>
+      <ul>
+        <li>Récupération et mise à jour des informations de circulation en temps réel</li>
+        <li>Gestion des événements (accidents, congestions) sur les routes</li>
+      </ul>
+    </td>
+    <td><strong>Branche Git :</strong> realtime-data</td>
+  </tr>
+  <tr>
+    <td><strong>Membre 6</strong></td>
+    <td>
+      <strong>Tâche : Tests et validation</strong><br>
+      <ul>
+        <li>Écriture et exécution des tests unitaires</li>
+        <li>Test d'intégration du système complet</li>
+        <li>Validation des fonctionnalités selon les spécifications</li>
+      </ul>
+    </td>
+    <td><strong>Branche Git :</strong> testing-validation</td>
+  </tr>
+</table>
+
+
 
 ### Comment démarrer
 
 1. Clonez le projet :
-
+   ```
    git clone https://github.com/Stang-Boy/devoir2Prog
    ```
 
@@ -67,6 +140,4 @@ Chaque membre de l’équipe doit créer une branche fonctionnelle basée sur `d
 
 
 ### Licences
-
-## don't know c'est quoi ca mais si jamais
 Ce projet est sous la licence [MIT](https://opensource.org/licenses/MIT).
