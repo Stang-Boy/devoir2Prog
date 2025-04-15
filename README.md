@@ -1,6 +1,5 @@
 # Devoir 2 - Système de Guidage Routier
 
-<<<<<<< HEAD
 Ce projet simule un système de guidage routier, où une voiture est guidée à travers un réseau routier. Le système prend en compte les événements en temps réel, comme les accidents ou les congestions, et ajuste automatiquement l'itinéraire de la voiture. L'interface graphique permet à l'utilisateur d'interagir avec le système pour provoquer des événements et observer les changements d'état du réseau.
 
 ## Structure du projet
