@@ -367,7 +367,6 @@ class GPS {
         }
         
         Troncon prochain = itineraire.get(0);
-        itineraire.remove(0);
         return String.format("Prenez %s (%dm) vers Intersection %d", 
                prochain.getNom(), (int)prochain.getLongueur(), 
                prochain.getIntersectionArrivee().getId());
@@ -399,7 +398,9 @@ class Vehicule {
     
     public void seDeplacer() {
         if (!gps.getItineraire().isEmpty()) {
-            positionActuelle = gps.getItineraire().get(0).getIntersectionArrivee();
+            Troncon tronconParcouru = gps.getItineraire().get(0);
+            positionActuelle = tronconParcouru.getIntersectionArrivee();
+            gps.getItineraire().remove(0);  // Retirer le tronçon parcouru
         }
     }
 }
@@ -639,9 +640,12 @@ class InterfaceGraphique {
             return;
         }
         
+        // Afficher l'instruction avant de se déplacer
         String instruction = vehicule.getGPS().donnerInstructionSuivante();
-        vehicule.seDeplacer();
         instructionsArea.append(">>> " + instruction + "\n");
+        
+        // Effectuer le déplacement
+        vehicule.seDeplacer();
         
         if (vehicule.getPositionActuelle().equals(vehicule.getDestination())) {
             instructionsArea.append(">>> Vous êtes arrivé à destination!\n");
