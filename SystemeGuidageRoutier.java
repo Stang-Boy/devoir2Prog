@@ -19,39 +19,46 @@ public class SystemeGuidageRoutier {
 
     private static CarteVille creerCarteTest() {
         CarteVille carte = new CarteVilleImpl();
-        Random rand = new Random();
         
-        // 1. Création des intersections fixes
+        // 1. Création des intersections fixes (inchangé)
         List<Intersection> intersections = new ArrayList<>();
         for (int i = 0; i < INTERSECTION_X.length; i++) {
             intersections.add(new IntersectionImpl(i+1, new Coordonnee(INTERSECTION_X[i], INTERSECTION_Y[i])));
             carte.ajouterIntersection(intersections.get(i));
         }
-
-        // 2. Définition des connexions fixes
+    
+        // 2. Définition des connexions fixes (inchangé)
         int[][] connections = {
             {0,1}, {1,2}, {2,3}, {3,4}, {4,5}, {5,6}, {6,7}, {7,0},
             {0,8}, {8,9}, {9,10}, {10,5}, {1,9}, {2,10}, {3,11}, {11,6}
         };
-
+    
         String[] noms = {
             "Boulevard Principal", "Avenue Centrale", "Rue de la Gare", "Chemin Vert",
             "Boulevard Nord", "Rue Rivoli", "Avenue Sud", "Rue Courte",
             "Passage Secret", "Boulevard Est", "Rue Longue", "Avenue Ouest",
             "Chemin Diagonal", "Rue Serpentine", "Boulevard Courbe", "Route Forestière"
         };
-
-        // 3. Création des tronçons avec longueurs aléatoires
+    
+        // 3. Longueurs fixes pour chaque tronçon (dans le même ordre que les connections)
+        int[] longueurs = {
+            150, 180, 130, 200,  // Premier groupe (boucle extérieure)
+            170, 160, 140, 120,   // Suite de la boucle
+            90, 110, 220, 190,   // Branches internes
+            100, 150, 140, 160    // Derniers tronçons
+        };
+    
+        // 4. Création des tronçons avec longueurs fixes
         for (int i = 0; i < connections.length; i++) {
             int from = connections[i][0];
             int to = connections[i][1];
             
             Troncon t = new TronconImpl(
                 noms[i],
-                40 + rand.nextInt(31), // Vitesse 40-70 km/h
+                50, // Vitesse fixe à 50 km/h pour tous (ou ajustez selon besoin)
                 intersections.get(from),
                 intersections.get(to),
-                80 + rand.nextInt(171) // Longueur 80-250m
+                longueurs[i] // Longueur fixe depuis le tableau
             );
             carte.ajouterTroncon(t);
         }
@@ -120,9 +127,15 @@ class TronconImpl extends RouteAbstraite implements Troncon {
     @Override
     public double calculerTempsDeParcours() {
         if (!estAccessible()) return Double.POSITIVE_INFINITY;
+        
         double vitesseEffective = vitesseMax;
         if ("congestion".equals(etat)) vitesseEffective *= 0.5;
-        return (longueur / vitesseEffective) * 3600;
+        
+        // Convertir vitesse km/h -> m/s
+        double vitesseMS = vitesseEffective * (1000.0 / 3600.0);
+        
+        // Temps de base + pénalité de 30 secondes par intersection
+        return (longueur / vitesseMS) + 30; 
     }
     
     @Override 
@@ -169,15 +182,15 @@ class IntersectionImpl implements Intersection {
     }
     
     @Override
-    public List<Troncon> getTronconsDisponibles() {
-        List<Troncon> disponibles = new ArrayList<>();
-        for (Troncon t : tronconsAdjacents) {
-            if (t.estAccessible()) {
-                disponibles.add(t);
-            }
+public List<Troncon> getTronconsDisponibles() {
+    List<Troncon> disponibles = new ArrayList<>();
+    for (Troncon t : tronconsAdjacents) {
+        if (t.estAccessible()) {
+            disponibles.add(t);
         }
-        return disponibles;
     }
+    return disponibles;
+}
     
     @Override
     public Troncon choisirDirection(Vehicule v) {
@@ -251,57 +264,56 @@ class CarteVilleImpl implements CarteVille {
     }
     
     @Override
-    public List<Troncon> trouverItineraire(Intersection depart, Intersection arrivee) {
-        // Implémentation de Dijkstra optimisée
-        Map<Intersection, Double> distances = new HashMap<>();
-        Map<Intersection, Intersection> predecesseurs = new HashMap<>();
-        PriorityQueue<Intersection> queue = new PriorityQueue<>(
-            Comparator.comparingDouble(distances::get)
-        );
-        
-        // Initialisation
-        for (Intersection i : intersections) {
-            distances.put(i, Double.POSITIVE_INFINITY);
-        }
-        distances.put(depart, 0.0);
-        queue.add(depart);
-        
-        while (!queue.isEmpty()) {
-            Intersection current = queue.poll();
-            
-            if (current.equals(arrivee)) break;
-            
-            for (Troncon t : current.getTronconsDisponibles()) {
-                Intersection neighbor = t.getIntersectionArrivee();
-                double newDist = distances.get(current) + t.getLongueur();
-                
-                if (newDist < distances.getOrDefault(neighbor, Double.POSITIVE_INFINITY)) {
-                    distances.put(neighbor, newDist);
-                    predecesseurs.put(neighbor, current);
-                    queue.remove(neighbor);
-                    queue.add(neighbor);
-                }
-            }
-        }
-        
-        // Reconstruction du chemin
-        List<Troncon> chemin = new ArrayList<>();
-        Intersection current = arrivee;
-        
-        while (predecesseurs.containsKey(current)) {
-            Intersection pred = predecesseurs.get(current);
-            
-            for (Troncon t : pred.getTronconsAdjacents()) {
-                if (t.getIntersectionArrivee().equals(current) && t.estAccessible()) {
-                    chemin.add(0, t);
-                    break;
-                }
-            }
-            current = pred;
-        }
-        
-        return chemin.isEmpty() || !current.equals(depart) ? Collections.emptyList() : chemin;
+public List<Troncon> trouverItineraire(Intersection depart, Intersection arrivee) {
+    Map<Intersection, Double> couts = new HashMap<>();
+    Map<Intersection, Intersection> predecesseurs = new HashMap<>();
+    Map<Intersection, Troncon> tronconPredecesseur = new HashMap<>();
+    PriorityQueue<Intersection> queue = new PriorityQueue<>(
+        Comparator.comparingDouble(couts::get)
+    );
+
+    // Initialisation
+    for (Intersection i : intersections) {
+        couts.put(i, Double.POSITIVE_INFINITY);
     }
+    couts.put(depart, 0.0);
+    queue.add(depart);
+
+    while (!queue.isEmpty()) {
+        Intersection current = queue.poll();
+        
+        if (current.equals(arrivee)) break;
+
+        for (Troncon t : current.getTronconsDisponibles()) {
+            Intersection neighbor = t.getIntersectionArrivee();
+            
+            // Nouveau coût = coût actuel + temps de parcours + pénalité d'intersection
+            double nouveauCout = couts.get(current) + t.calculerTempsDeParcours();
+            
+            if (nouveauCout < couts.get(neighbor)) {
+                couts.put(neighbor, nouveauCout);
+                predecesseurs.put(neighbor, current);
+                tronconPredecesseur.put(neighbor, t);
+                
+                // Mise à jour de la priorité dans la file
+                queue.remove(neighbor);
+                queue.add(neighbor);
+            }
+        }
+    }
+
+    // Reconstruction du chemin
+    List<Troncon> chemin = new ArrayList<>();
+    Intersection current = arrivee;
+    
+    while (predecesseurs.containsKey(current)) {
+        Troncon t = tronconPredecesseur.get(current);
+        chemin.add(0, t);
+        current = predecesseurs.get(current);
+    }
+
+    return chemin.isEmpty() || !current.equals(depart) ? Collections.emptyList() : chemin;
+}
 }
 
 // Classe EvenementRoutier
@@ -421,6 +433,30 @@ class InterfaceGraphique {
         this.vehicule = vehicule;
     }
     
+    private void mettreAJourDistance() {
+        if (vehicule.getGPS().getItineraire().isEmpty()) {
+            distanceLabel.setText("Distance: 0 m | Temps: 0 min | Coût: 0");
+            return;
+        }
+    
+        double distance = 0;
+        double temps = 0;
+        double coutTotal = 0;
+        int intersectionsTraversees = vehicule.getGPS().getItineraire().size();
+    
+        for (Troncon t : vehicule.getGPS().getItineraire()) {
+            distance += t.getLongueur();
+            temps += t.calculerTempsDeParcours();
+            coutTotal += t.calculerTempsDeParcours();
+        }
+    
+        int minutes = (int)(temps / 60);
+        distanceLabel.setText(String.format(
+            "Distance: %.0f m | Temps: %d min | Coût: %.1f | Intersections: %d",
+            distance, minutes, coutTotal, intersectionsTraversees
+        ));
+    }
+
     public void afficher() {
         frame = new JFrame("Système de Guidage Routier Complet");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -511,19 +547,6 @@ class InterfaceGraphique {
         instructionsArea.append(String.format(">>> Destination définie: Intersection %d\n", destination.getId()));
         mettreAJourDistance();
         mettreAJourAffichage();
-    }
-    
-    private void mettreAJourDistance() {
-        if (vehicule.getGPS().getItineraire().isEmpty()) {
-            distanceLabel.setText("Distance totale: 0 m");
-            return;
-        }
-        
-        double distance = 0;
-        for (Troncon t : vehicule.getGPS().getItineraire()) {
-            distance += t.getLongueur();
-        }
-        distanceLabel.setText(String.format("Distance totale: %.0f m", distance));
     }
     
     private void afficherCarte(Graphics g) {
