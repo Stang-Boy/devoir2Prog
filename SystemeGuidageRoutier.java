@@ -17,44 +17,41 @@ public class SystemeGuidageRoutier {
     private static CarteVille creerCarteTest() {
         CarteVille carte = new CarteVilleImpl();
         
-        // Création des intersections
-        Intersection i1 = new IntersectionImpl(1, new Coordonnee(100, 100));
-        Intersection i2 = new IntersectionImpl(2, new Coordonnee(300, 100));
-        Intersection i3 = new IntersectionImpl(3, new Coordonnee(300, 300));
-        Intersection i4 = new IntersectionImpl(4, new Coordonnee(100, 300));
-        Intersection i5 = new IntersectionImpl(5, new Coordonnee(200, 200));
-        
-        // Ajout des intersections à la carte
-        carte.ajouterIntersection(i1);
-        carte.ajouterIntersection(i2);
-        carte.ajouterIntersection(i3);
-        carte.ajouterIntersection(i4);
-        carte.ajouterIntersection(i5);
-        
-        // Création des tronçons
-        Troncon t1 = new TronconImpl("Rue A", 50, i1, i2);
-        Troncon t2 = new TronconImpl("Rue B", 50, i2, i3);
-        Troncon t3 = new TronconImpl("Rue C", 30, i3, i4);
-        Troncon t4 = new TronconImpl("Rue D", 30, i4, i1);
-        Troncon t5 = new TronconImpl("Avenue E", 70, i1, i5);
-        Troncon t6 = new TronconImpl("Avenue F", 70, i5, i3);
-        Troncon t7 = new TronconImpl("Boulevard G", 60, i2, i5);
-        Troncon t8 = new TronconImpl("Boulevard H", 60, i5, i4);
-        
+        // Création de 12 intersections avec positions aléatoires
+        List<Intersection> intersections = new ArrayList<>();
+        for (int i = 1; i <= 8; i++) {
+            int x = 100 + (int)(Math.random() * 600);
+            int y = 100 + (int)(Math.random() * 400);
+            intersections.add(new IntersectionImpl(i, new Coordonnee(x, y)));
+            carte.ajouterIntersection(intersections.get(i-1));
+        }
+
+        // Création de 12 tronçons avec longueurs variées
+        List<Troncon> troncons = Arrays.asList(
+            new TronconImpl("Boulevard Principal", 50, intersections.get(0), intersections.get(1), 150 + (int)(Math.random() * 100)),
+            new TronconImpl("Avenue Centrale", 60, intersections.get(1), intersections.get(2), 120 + (int)(Math.random() * 80)),
+            new TronconImpl("Rue de la Gare", 40, intersections.get(2), intersections.get(3), 200 + (int)(Math.random() * 50)),
+            new TronconImpl("Chemin Vert", 30, intersections.get(3), intersections.get(4), 180 + (int)(Math.random() * 70)),
+            new TronconImpl("Boulevard Nord", 50, intersections.get(4), intersections.get(5), 160 + (int)(Math.random() * 90)),
+            new TronconImpl("Rue Rivoli", 40, intersections.get(5), intersections.get(6), 140 + (int)(Math.random() * 60)),
+            new TronconImpl("Avenue Sud", 60, intersections.get(6), intersections.get(7), 170 + (int)(Math.random() * 80)),
+            new TronconImpl("Rue Courte", 30, intersections.get(7), intersections.get(8), 90 + (int)(Math.random() * 40)),
+            new TronconImpl("Passage Secret", 30, intersections.get(8), intersections.get(9), 110 + (int)(Math.random() * 50)),
+            new TronconImpl("Boulevard Est", 50, intersections.get(9), intersections.get(10), 130 + (int)(Math.random() * 70)),
+            new TronconImpl("Rue Longue", 40, intersections.get(10), intersections.get(11), 220 + (int)(Math.random() * 80)),
+            new TronconImpl("Avenue Ouest", 60, intersections.get(0), intersections.get(3), 190 + (int)(Math.random() * 60))
+        );
+
         // Ajout des tronçons à la carte
-        carte.ajouterTroncon(t1);
-        carte.ajouterTroncon(t2);
-        carte.ajouterTroncon(t3);
-        carte.ajouterTroncon(t4);
-        carte.ajouterTroncon(t5);
-        carte.ajouterTroncon(t6);
-        carte.ajouterTroncon(t7);
-        carte.ajouterTroncon(t8);
+        for (Troncon t : troncons) {
+            carte.ajouterTroncon(t);
+        }
         
         return carte;
     }
 }
 
+// Interface Route
 interface Route {
     double getLongueur();
     String getNom();
@@ -63,6 +60,7 @@ interface Route {
     boolean estAccessible();
 }
 
+// Classe abstraite RouteAbstraite
 abstract class RouteAbstraite implements Route {
     protected double longueur;
     protected String nom;
@@ -73,24 +71,18 @@ abstract class RouteAbstraite implements Route {
         this.longueur = longueur;
     }
     
-    @Override
-    public double getLongueur() { return longueur; }
+    @Override public double getLongueur() { return longueur; }
+    @Override public String getNom() { return nom; }
+    @Override public String getEtat() { return etat; }
+    @Override public void setEtat(String etat) { this.etat = etat; }
     
-    @Override
-    public String getNom() { return nom; }
-    
-    @Override
-    public String getEtat() { return etat; }
-    
-    @Override
-    public void setEtat(String etat) { this.etat = etat; }
-    
-    @Override
+    @Override 
     public boolean estAccessible() {
         return !("fermé".equals(etat) || "accident".equals(etat));
     }
 }
 
+// Interface Troncon
 interface Troncon extends Route {
     int getVitesseMax();
     Intersection getIntersectionDepart();
@@ -99,51 +91,43 @@ interface Troncon extends Route {
     boolean estAffecteParEvenement();
 }
 
+// Implémentation Troncon
 class TronconImpl extends RouteAbstraite implements Troncon {
     private int vitesseMax;
     private Intersection intersectionDepart;
     private Intersection intersectionArrivee;
     
-    public TronconImpl(String nom, int vitesseMax, Intersection depart, Intersection arrivee) {
-        super(nom, calculerLongueur(depart.getPosition(), arrivee.getPosition()));
+    public TronconImpl(String nom, int vitesseMax, Intersection depart, Intersection arrivee, double longueur) {
+        super(nom, longueur);
         this.vitesseMax = vitesseMax;
         this.intersectionDepart = depart;
         this.intersectionArrivee = arrivee;
-        depart.ajouterTroncon(this);
     }
     
-    private static double calculerLongueur(Coordonnee c1, Coordonnee c2) {
-        return Math.sqrt(Math.pow(c2.getX() - c1.getX(), 2) + Math.pow(c2.getY() - c1.getY(), 2));
-    }
-    
-    @Override
-    public int getVitesseMax() { return vitesseMax; }
-    
-    @Override
-    public Intersection getIntersectionDepart() { return intersectionDepart; }
-    
-    @Override
-    public Intersection getIntersectionArrivee() { return intersectionArrivee; }
+    @Override public int getVitesseMax() { return vitesseMax; }
+    @Override public Intersection getIntersectionDepart() { return intersectionDepart; }
+    @Override public Intersection getIntersectionArrivee() { return intersectionArrivee; }
     
     @Override
     public double calculerTempsDeParcours() {
         if (!estAccessible()) return Double.POSITIVE_INFINITY;
         double vitesseEffective = vitesseMax;
         if ("congestion".equals(etat)) vitesseEffective *= 0.5;
-        return (longueur / vitesseEffective) * 3600; // temps en secondes
+        return (longueur / vitesseEffective) * 3600;
     }
     
-    @Override
+    @Override 
     public boolean estAffecteParEvenement() {
         return !"fluide".equals(etat);
     }
     
     @Override
     public String toString() {
-        return nom + " (" + longueur + " m, " + vitesseMax + " km/h, " + etat + ")";
+        return String.format("%s (%dm, %d km/h, %s)", nom, (int)longueur, vitesseMax, etat);
     }
 }
 
+// Interface Intersection
 interface Intersection {
     int getId();
     Coordonnee getPosition();
@@ -153,6 +137,7 @@ interface Intersection {
     Troncon choisirDirection(Vehicule v);
 }
 
+// Implémentation Intersection
 class IntersectionImpl implements Intersection {
     private int id;
     private Coordonnee position;
@@ -163,14 +148,9 @@ class IntersectionImpl implements Intersection {
         this.position = position;
     }
     
-    @Override
-    public int getId() { return id; }
-    
-    @Override
-    public Coordonnee getPosition() { return position; }
-    
-    @Override
-    public List<Troncon> getTronconsAdjacents() { return new ArrayList<>(tronconsAdjacents); }
+    @Override public int getId() { return id; }
+    @Override public Coordonnee getPosition() { return position; }
+    @Override public List<Troncon> getTronconsAdjacents() { return new ArrayList<>(tronconsAdjacents); }
     
     @Override
     public void ajouterTroncon(Troncon t) {
@@ -202,16 +182,34 @@ class IntersectionImpl implements Intersection {
                 return t;
             }
         }
-        
         return null;
     }
     
     @Override
     public String toString() {
-        return "Intersection " + id + " (" + position + ")";
+        return String.format("Intersection %d (%s)", id, position);
     }
 }
 
+// Classe Coordonnee
+class Coordonnee {
+    private int x, y;
+    
+    public Coordonnee(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+    
+    public int getX() { return x; }
+    public int getY() { return y; }
+    
+    @Override
+    public String toString() {
+        return String.format("(%d, %d)", x, y);
+    }
+}
+
+// Interface CarteVille
 interface CarteVille {
     List<Intersection> getIntersections();
     List<Troncon> getTroncons();
@@ -220,15 +218,13 @@ interface CarteVille {
     List<Troncon> trouverItineraire(Intersection depart, Intersection arrivee);
 }
 
+// Implémentation CarteVille
 class CarteVilleImpl implements CarteVille {
     private List<Intersection> intersections = new ArrayList<>();
     private List<Troncon> troncons = new ArrayList<>();
     
-    @Override
-    public List<Intersection> getIntersections() { return new ArrayList<>(intersections); }
-    
-    @Override
-    public List<Troncon> getTroncons() { return new ArrayList<>(troncons); }
+    @Override public List<Intersection> getIntersections() { return new ArrayList<>(intersections); }
+    @Override public List<Troncon> getTroncons() { return new ArrayList<>(troncons); }
     
     @Override
     public void ajouterIntersection(Intersection i) {
@@ -241,12 +237,13 @@ class CarteVilleImpl implements CarteVille {
     public void ajouterTroncon(Troncon t) {
         if (!troncons.contains(t)) {
             troncons.add(t);
+            t.getIntersectionDepart().ajouterTroncon(t);
         }
     }
     
     @Override
     public List<Troncon> trouverItineraire(Intersection depart, Intersection arrivee) {
-        // Implémentation de l'algorithme de Dijkstra
+        // Implémentation de Dijkstra optimisée
         Map<Intersection, Double> distances = new HashMap<>();
         Map<Intersection, Intersection> predecesseurs = new HashMap<>();
         PriorityQueue<Intersection> queue = new PriorityQueue<>(
@@ -267,11 +264,12 @@ class CarteVilleImpl implements CarteVille {
             
             for (Troncon t : current.getTronconsDisponibles()) {
                 Intersection neighbor = t.getIntersectionArrivee();
-                double alt = distances.get(current) + t.calculerTempsDeParcours();
+                double newDist = distances.get(current) + t.getLongueur();
                 
-                if (alt < distances.get(neighbor)) {
-                    distances.put(neighbor, alt);
+                if (newDist < distances.getOrDefault(neighbor, Double.POSITIVE_INFINITY)) {
+                    distances.put(neighbor, newDist);
                     predecesseurs.put(neighbor, current);
+                    queue.remove(neighbor);
                     queue.add(neighbor);
                 }
             }
@@ -290,7 +288,6 @@ class CarteVilleImpl implements CarteVille {
                     break;
                 }
             }
-            
             current = pred;
         }
         
@@ -298,23 +295,7 @@ class CarteVilleImpl implements CarteVille {
     }
 }
 
-class Coordonnee {
-    private int x, y;
-    
-    public Coordonnee(int x, int y) {
-        this.x = x;
-        this.y = y;
-    }
-    
-    public int getX() { return x; }
-    public int getY() { return y; }
-    
-    @Override
-    public String toString() {
-        return "(" + x + ", " + y + ")";
-    }
-}
-
+// Classe EvenementRoutier
 class EvenementRoutier {
     private String type;
     private Troncon troncon;
@@ -345,15 +326,15 @@ class EvenementRoutier {
     
     @Override
     public String toString() {
-        return type + " sur " + troncon.getNom() + " (gravité: " + gravite + ")";
+        return String.format("%s sur %s (gravité: %d)", type, troncon.getNom(), gravite);
     }
 }
 
+// Classe GPS
 class GPS {
     private List<Troncon> itineraire = new ArrayList<>();
     private Intersection positionActuelle;
     private Intersection destination;
-    private int etapeActuelle = 0;
     
     public List<Troncon> getItineraire() { return new ArrayList<>(itineraire); }
     public Intersection getPositionActuelle() { return positionActuelle; }
@@ -363,71 +344,58 @@ class GPS {
         this.positionActuelle = depart;
         this.destination = arrivee;
         this.itineraire = carte.trouverItineraire(depart, arrivee);
-        this.etapeActuelle = 0;
     }
     
     public void mettreAJourItineraireEnCasEvenement(CarteVille carte) {
         if (positionActuelle != null && destination != null) {
-            this.itineraire = carte.trouverItineraire(positionActuelle, destination);
-            this.etapeActuelle = 0;
+            calculerItineraire(carte, positionActuelle, destination);
         }
     }
     
     public String donnerInstructionSuivante() {
-        if (itineraire.isEmpty() || etapeActuelle >= itineraire.size()) {
+        if (itineraire.isEmpty()) {
             return "Vous êtes arrivé à destination";
         }
         
-        Troncon prochainTroncon = itineraire.get(etapeActuelle);
-        etapeActuelle++;
-        return "Prenez " + prochainTroncon.getNom() + " vers " + 
-               prochainTroncon.getIntersectionArrivee().getId();
-    }
-    
-    public void avancerPosition() {
-        if (!itineraire.isEmpty() && etapeActuelle > 0 && etapeActuelle <= itineraire.size()) {
-            positionActuelle = itineraire.get(etapeActuelle-1).getIntersectionArrivee();
-        }
+        Troncon prochain = itineraire.get(0);
+        itineraire.remove(0);
+        return String.format("Prenez %s (%dm) vers Intersection %d", 
+               prochain.getNom(), (int)prochain.getLongueur(), 
+               prochain.getIntersectionArrivee().getId());
     }
 }
 
+// Classe Vehicule
 class Vehicule {
     private Intersection positionActuelle;
     private Intersection destination;
-    private GPS gps;
+    private GPS gps = new GPS();
     
     public Vehicule(Intersection positionInitiale) {
         this.positionActuelle = positionInitiale;
     }
     
+    public void setGPS(GPS gps) {
+        this.gps = gps;
+    }
+
     public Intersection getPositionActuelle() { return positionActuelle; }
     public Intersection getDestination() { return destination; }
     public GPS getGPS() { return gps; }
     
-    public Vehicule setGPS(GPS gps) {
-        this.gps = gps;
-        return this;
-    }
-    
     public void setDestination(Intersection destination, CarteVille carte) {
         this.destination = destination;
-        if (gps != null) {
-            gps.calculerItineraire(carte, positionActuelle, destination);
-        }
+        gps.calculerItineraire(carte, positionActuelle, destination);
     }
     
     public void seDeplacer() {
-        if (gps != null) {
-            gps.avancerPosition();
-            positionActuelle = gps.getPositionActuelle();
+        if (!gps.getItineraire().isEmpty()) {
+            positionActuelle = gps.getItineraire().get(0).getIntersectionArrivee();
         }
-    }
-    
-    public String obtenirInstruction() {
-        return gps != null ? gps.donnerInstructionSuivante() : "Pas de GPS configuré";
     }
 }
 
+// Classe InterfaceGraphique
 class InterfaceGraphique {
     private CarteVille carte;
     private Vehicule vehicule;
@@ -444,9 +412,9 @@ class InterfaceGraphique {
     }
     
     public void afficher() {
-        frame = new JFrame("Système de Guidage Routier - Version Améliorée");
+        frame = new JFrame("Système de Guidage Routier Complet");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(1000, 700);
+        frame.setSize(1100, 750);
         frame.setLayout(new BorderLayout());
         
         // Panel de la carte
@@ -460,60 +428,69 @@ class InterfaceGraphique {
         cartePanel.setPreferredSize(new Dimension(700, 700));
         frame.add(cartePanel, BorderLayout.CENTER);
         
-        // Panel de contrôle à droite
-        JPanel controlPanel = new JPanel();
-        controlPanel.setLayout(new BorderLayout());
+        // Panel de contrôle
+        JPanel controlPanel = new JPanel(new BorderLayout());
+        controlPanel.setPreferredSize(new Dimension(350, 700));
         
-        // Panel des instructions
-        instructionsArea = new JTextArea(20, 30);
-        instructionsArea.setEditable(false);
-        instructionsArea.setFont(new Font("Monospaced", Font.PLAIN, 14));
-        instructionsArea.setMargin(new Insets(10, 10, 10, 10));
-        JScrollPane scrollPane = new JScrollPane(instructionsArea);
-        controlPanel.add(scrollPane, BorderLayout.CENTER);
+        // Panel de destination
+        JPanel destinationPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
         
-        // Panel des informations
-        JPanel infoPanel = new JPanel(new GridLayout(0, 1));
-        distanceLabel = new JLabel("Distance totale: 0 m");
-        distanceLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
-        infoPanel.add(distanceLabel);
-        
-        // Sélection de destination
-        JPanel destinationPanel = new JPanel();
-        destinationPanel.add(new JLabel("Destination: "));
         destinationComboBox = new JComboBox<>();
         for (Intersection i : carte.getIntersections()) {
             destinationComboBox.addItem(i);
         }
-        destinationPanel.add(destinationComboBox);
         
-        JButton setDestinationButton = new JButton("Définir destination");
-        setDestinationButton.addActionListener(e -> definirDestination());
-        destinationPanel.add(setDestinationButton);
-        infoPanel.add(destinationPanel);
+        JButton setDestButton = new JButton("Définir destination");
+        setDestButton.addActionListener(e -> definirDestination());
         
-        controlPanel.add(infoPanel, BorderLayout.NORTH);
+        destinationPanel.add(new JLabel("Destination:"), gbc);
+        gbc.gridx = 1;
+        destinationPanel.add(destinationComboBox, gbc);
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.gridwidth = 2;
+        destinationPanel.add(setDestButton, gbc);
+        
+        // Panel d'informations
+        JPanel infoPanel = new JPanel(new BorderLayout());
+        distanceLabel = new JLabel("Distance totale: 0 m");
+        distanceLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        infoPanel.add(distanceLabel, BorderLayout.NORTH);
+        infoPanel.add(destinationPanel, BorderLayout.CENTER);
+        
+        // Panel des instructions
+        JPanel logPanel = new JPanel(new BorderLayout());
+        instructionsArea = new JTextArea(15, 30);
+        instructionsArea.setEditable(false);
+        instructionsArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        JScrollPane scrollPane = new JScrollPane(instructionsArea);
+        logPanel.add(scrollPane, BorderLayout.CENTER);
         
         // Panel des boutons
-        JPanel buttonPanel = new JPanel(new GridLayout(1, 3));
+        JPanel buttonPanel = new JPanel(new GridLayout(1, 3, 10, 10));
         
-        JButton simulerAccidentButton = new JButton("Simuler accident");
-        simulerAccidentButton.addActionListener(e -> simulerAccident());
-        buttonPanel.add(simulerAccidentButton);
+        JButton accidentBtn = new JButton("Simuler accident");
+        accidentBtn.addActionListener(e -> simulerAccident());
         
-        JButton recalculerButton = new JButton("Recalculer itinéraire");
-        recalculerButton.addActionListener(e -> recalculerItineraire());
-        buttonPanel.add(recalculerButton);
+        JButton recalcBtn = new JButton("Recalculer");
+        recalcBtn.addActionListener(e -> recalculerItineraire());
         
-        JButton deplacerButton = new JButton("Déplacer véhicule");
-        deplacerButton.addActionListener(e -> deplacerVehicule());
-        buttonPanel.add(deplacerButton);
+        JButton moveBtn = new JButton("Déplacer");
+        moveBtn.addActionListener(e -> deplacerVehicule());
         
+        buttonPanel.add(accidentBtn);
+        buttonPanel.add(recalcBtn);
+        buttonPanel.add(moveBtn);
+        
+        // Assemblage
+        controlPanel.add(infoPanel, BorderLayout.NORTH);
+        controlPanel.add(logPanel, BorderLayout.CENTER);
         controlPanel.add(buttonPanel, BorderLayout.SOUTH);
         
         frame.add(controlPanel, BorderLayout.EAST);
-        
-        // Mettre à jour l'affichage initial
         mettreAJourAffichage();
         frame.setVisible(true);
     }
@@ -521,34 +498,30 @@ class InterfaceGraphique {
     private void definirDestination() {
         Intersection destination = (Intersection) destinationComboBox.getSelectedItem();
         vehicule.setDestination(destination, carte);
-        instructionsArea.append(">>> Destination définie: Intersection " + destination.getId() + "\n");
+        instructionsArea.append(String.format(">>> Destination définie: Intersection %d\n", destination.getId()));
         mettreAJourDistance();
         mettreAJourAffichage();
     }
     
     private void mettreAJourDistance() {
-        if (vehicule.getGPS() != null && !vehicule.getGPS().getItineraire().isEmpty()) {
-            double distance = 0;
-            for (Troncon t : vehicule.getGPS().getItineraire()) {
-                distance += t.getLongueur();
-            }
-            distanceLabel.setText(String.format("Distance totale: %.0f m", distance));
-        } else {
+        if (vehicule.getGPS().getItineraire().isEmpty()) {
             distanceLabel.setText("Distance totale: 0 m");
+            return;
         }
+        
+        double distance = 0;
+        for (Troncon t : vehicule.getGPS().getItineraire()) {
+            distance += t.getLongueur();
+        }
+        distanceLabel.setText(String.format("Distance totale: %.0f m", distance));
     }
     
     private void afficherCarte(Graphics g) {
-        Graphics2D g2d = (Graphics2D) g;
+        Graphics2D g2d = (Graphics2D)g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         
-        // Afficher les tronçons normaux
-        g2d.setStroke(new BasicStroke(2));
+        // Afficher les tronçons
         for (Troncon t : carte.getTroncons()) {
-            Coordonnee depart = t.getIntersectionDepart().getPosition();
-            Coordonnee arrivee = t.getIntersectionArrivee().getPosition();
-            
-            // Couleur selon l'état
             switch (t.getEtat()) {
                 case "fluide": g2d.setColor(Color.GREEN); break;
                 case "congestion": g2d.setColor(Color.ORANGE); break;
@@ -557,21 +530,24 @@ class InterfaceGraphique {
                 default: g2d.setColor(Color.BLACK);
             }
             
-            g2d.drawLine(depart.getX(), depart.getY(), arrivee.getX(), arrivee.getY());
+            Coordonnee dep = t.getIntersectionDepart().getPosition();
+            Coordonnee arr = t.getIntersectionArrivee().getPosition();
+            g2d.drawLine(dep.getX(), dep.getY(), arr.getX(), arr.getY());
             
-            // Afficher le nom
+            // Afficher le nom et la longueur
             g2d.setColor(Color.BLACK);
-            g2d.drawString(t.getNom(), (depart.getX() + arrivee.getX()) / 2, (depart.getY() + arrivee.getY()) / 2);
+            String info = String.format("%s (%dm)", t.getNom(), (int)t.getLongueur());
+            g2d.drawString(info, (dep.getX()+arr.getX())/2, (dep.getY()+arr.getY())/2);
         }
         
-        // Afficher l'itinéraire en bleu épais
-        if (vehicule.getGPS() != null && !vehicule.getGPS().getItineraire().isEmpty()) {
+        // Afficher l'itinéraire
+        if (!vehicule.getGPS().getItineraire().isEmpty()) {
             g2d.setColor(new Color(0, 0, 255, 150));
-            g2d.setStroke(new BasicStroke(4));
+            g2d.setStroke(new BasicStroke(3));
             for (Troncon t : vehicule.getGPS().getItineraire()) {
-                Coordonnee depart = t.getIntersectionDepart().getPosition();
-                Coordonnee arrivee = t.getIntersectionArrivee().getPosition();
-                g2d.drawLine(depart.getX(), depart.getY(), arrivee.getX(), arrivee.getY());
+                Coordonnee dep = t.getIntersectionDepart().getPosition();
+                Coordonnee arr = t.getIntersectionArrivee().getPosition();
+                g2d.drawLine(dep.getX(), dep.getY(), arr.getX(), arr.getY());
             }
         }
         
@@ -579,71 +555,82 @@ class InterfaceGraphique {
         g2d.setColor(Color.BLUE);
         for (Intersection i : carte.getIntersections()) {
             Coordonnee pos = i.getPosition();
-            g2d.fillOval(pos.getX() - 5, pos.getY() - 5, 10, 10);
-            g2d.drawString("" + i.getId(), pos.getX() + 10, pos.getY() + 5);
+            g2d.fillOval(pos.getX()-5, pos.getY()-5, 10, 10);
+            g2d.drawString(String.valueOf(i.getId()), pos.getX()+10, pos.getY()+5);
         }
         
         // Afficher la destination
         if (vehicule.getDestination() != null) {
             Coordonnee pos = vehicule.getDestination().getPosition();
             g2d.setColor(Color.MAGENTA);
-            g2d.fillOval(pos.getX() - 8, pos.getY() - 8, 16, 16);
-            g2d.drawString("DEST", pos.getX() + 15, pos.getY() + 5);
+            g2d.fillOval(pos.getX()-8, pos.getY()-8, 16, 16);
+            g2d.drawString("DEST", pos.getX()+15, pos.getY()+5);
         }
         
         // Afficher le véhicule
         if (vehicule.getPositionActuelle() != null) {
             Coordonnee pos = vehicule.getPositionActuelle().getPosition();
             g2d.setColor(Color.RED);
-            g2d.fillOval(pos.getX() - 8, pos.getY() - 8, 16, 16);
+            g2d.fillOval(pos.getX()-8, pos.getY()-8, 16, 16);
         }
     }
     
     private void simulerAccident() {
         if (carte.getTroncons().isEmpty()) return;
         
-        Random rand = new Random();
-        Troncon tronconAffecte = carte.getTroncons().get(rand.nextInt(carte.getTroncons().size()));
-        EvenementRoutier accident = new EvenementRoutier("accident", tronconAffecte, 3);
+        // Filtrer les tronçons sans accident
+        List<Troncon> tronconsDisponibles = new ArrayList<>();
+        for (Troncon t : carte.getTroncons()) {
+            if (!t.getEtat().equals("accident")) {
+                tronconsDisponibles.add(t);
+            }
+        }
+        
+        if (tronconsDisponibles.isEmpty()) {
+            instructionsArea.append(">>> Tous les tronçons ont déjà un accident!\n");
+            return;
+        }
+        
+        Troncon tronconAffecte = tronconsDisponibles.get(new Random().nextInt(tronconsDisponibles.size()));
+        EvenementRoutier accident = new EvenementRoutier("accident", tronconAffecte, 3 + new Random().nextInt(3));
         accident.affecterTroncon();
         evenements.add(accident);
         
-        instructionsArea.append(">>> Nouvel accident: " + accident + "\n");
+        instructionsArea.append(String.format(">>> Accident sur %s (durée: %d)\n", 
+            tronconAffecte.getNom(), accident.getGravite()));
         
-        // Recalculer l'itinéraire si nécessaire
-        if (vehicule.getGPS() != null && vehicule.getGPS().getItineraire().contains(tronconAffecte)) {
-            vehicule.getGPS().mettreAJourItineraireEnCasEvenement(carte);
-            instructionsArea.append(">>> Itinéraire recalculé à cause de l'accident\n");
-            mettreAJourDistance();
+        // Recalcul immédiat si nécessaire
+        if (vehicule.getGPS().getItineraire().contains(tronconAffecte)) {
+            recalculerItineraire();
         }
         
         mettreAJourAffichage();
     }
     
     private void recalculerItineraire() {
-        if (vehicule.getGPS() != null && vehicule.getDestination() != null) {
-            vehicule.getGPS().calculerItineraire(carte, vehicule.getPositionActuelle(), vehicule.getDestination());
-            instructionsArea.append(">>> Itinéraire recalculé\n");
-            mettreAJourDistance();
-            mettreAJourAffichage();
-        } else {
-            instructionsArea.append(">>> Veuillez d'abord définir une destination\n");
+        if (vehicule.getDestination() == null) {
+            instructionsArea.append(">>> Aucune destination définie\n");
+            return;
         }
+        
+        // Réappliquer tous les accidents avant recalcul
+        for (EvenementRoutier e : evenements) {
+            e.affecterTroncon();
+        }
+        
+        vehicule.getGPS().calculerItineraire(carte, vehicule.getPositionActuelle(), vehicule.getDestination());
+        mettreAJourDistance();
+        instructionsArea.append(">>> Itinéraire recalculé en tenant compte des obstacles\n");
+        mettreAJourAffichage();
     }
     
     private void deplacerVehicule() {
-        if (vehicule.getGPS() == null || vehicule.getGPS().getItineraire().isEmpty()) {
-            instructionsArea.append(">>> Aucun itinéraire calculé\n");
+        if (vehicule.getGPS().getItineraire().isEmpty()) {
+            instructionsArea.append(">>> Aucun itinéraire à suivre\n");
             return;
         }
         
-        if (vehicule.getPositionActuelle().equals(vehicule.getDestination())) {
-            instructionsArea.append(">>> Vous êtes déjà arrivé à destination!\n");
-            return;
-        }
-        
-        // Avancer d'un tronçon à la fois
-        String instruction = vehicule.obtenirInstruction();
+        String instruction = vehicule.getGPS().donnerInstructionSuivante();
         vehicule.seDeplacer();
         instructionsArea.append(">>> " + instruction + "\n");
         
@@ -651,6 +638,7 @@ class InterfaceGraphique {
             instructionsArea.append(">>> Vous êtes arrivé à destination!\n");
         }
         
+        mettreAJourDistance();
         mettreAJourAffichage();
     }
     
@@ -661,12 +649,11 @@ class InterfaceGraphique {
             EvenementRoutier e = it.next();
             e.mettreAJourEtat();
             if (e.getGravite() == 0) {
-                instructionsArea.append(">>> Événement résolu: " + e + "\n");
+                instructionsArea.append(String.format(">>> Accident résolu sur %s\n", e.getTroncon().getNom()));
                 it.remove();
             }
         }
         
-        // Rafraîchir l'affichage
         cartePanel.repaint();
     }
 }
