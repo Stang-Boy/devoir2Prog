@@ -5,45 +5,54 @@ import javax.swing.*;
 import java.util.List;
 
 public class SystemeGuidageRoutier {
+    // Positions fixes des intersections (x, y)
+    private static final int[] INTERSECTION_X = {100, 250, 400, 380, 450, 300, 150, 80, 200, 280, 350, 220};
+    private static final int[] INTERSECTION_Y = {100, 80, 120, 250, 350, 400, 380, 300, 200, 180, 220, 320};
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             CarteVille carte = creerCarteTest();
             Vehicule vehicule = new Vehicule(carte.getIntersections().get(0));
-            vehicule.setGPS(new GPS());
             new InterfaceGraphique(carte, vehicule).afficher();
         });
     }
 
     private static CarteVille creerCarteTest() {
         CarteVille carte = new CarteVilleImpl();
+        Random rand = new Random();
         
-        // Création de 12 intersections avec positions aléatoires
+        // 1. Création des intersections fixes
         List<Intersection> intersections = new ArrayList<>();
-        for (int i = 1; i <= 8; i++) {
-            int x = 100 + (int)(Math.random() * 600);
-            int y = 100 + (int)(Math.random() * 400);
-            intersections.add(new IntersectionImpl(i, new Coordonnee(x, y)));
-            carte.ajouterIntersection(intersections.get(i-1));
+        for (int i = 0; i < INTERSECTION_X.length; i++) {
+            intersections.add(new IntersectionImpl(i+1, new Coordonnee(INTERSECTION_X[i], INTERSECTION_Y[i])));
+            carte.ajouterIntersection(intersections.get(i));
         }
 
-        // Création de 12 tronçons avec longueurs variées
-        List<Troncon> troncons = Arrays.asList(
-            new TronconImpl("Boulevard Principal", 50, intersections.get(0), intersections.get(1), 150 + (int)(Math.random() * 100)),
-            new TronconImpl("Avenue Centrale", 60, intersections.get(1), intersections.get(2), 120 + (int)(Math.random() * 80)),
-            new TronconImpl("Rue de la Gare", 40, intersections.get(2), intersections.get(3), 200 + (int)(Math.random() * 50)),
-            new TronconImpl("Chemin Vert", 30, intersections.get(3), intersections.get(4), 180 + (int)(Math.random() * 70)),
-            new TronconImpl("Boulevard Nord", 50, intersections.get(4), intersections.get(5), 160 + (int)(Math.random() * 90)),
-            new TronconImpl("Rue Rivoli", 40, intersections.get(5), intersections.get(6), 140 + (int)(Math.random() * 60)),
-            new TronconImpl("Avenue Sud", 60, intersections.get(6), intersections.get(7), 170 + (int)(Math.random() * 80)),
-            new TronconImpl("Rue Courte", 30, intersections.get(7), intersections.get(8), 90 + (int)(Math.random() * 40)),
-            new TronconImpl("Passage Secret", 30, intersections.get(8), intersections.get(9), 110 + (int)(Math.random() * 50)),
-            new TronconImpl("Boulevard Est", 50, intersections.get(9), intersections.get(10), 130 + (int)(Math.random() * 70)),
-            new TronconImpl("Rue Longue", 40, intersections.get(10), intersections.get(11), 220 + (int)(Math.random() * 80)),
-            new TronconImpl("Avenue Ouest", 60, intersections.get(0), intersections.get(3), 190 + (int)(Math.random() * 60))
-        );
+        // 2. Définition des connexions fixes
+        int[][] connections = {
+            {0,1}, {1,2}, {2,3}, {3,4}, {4,5}, {5,6}, {6,7}, {7,0},
+            {0,8}, {8,9}, {9,10}, {10,5}, {1,9}, {2,10}, {3,11}, {11,6}
+        };
 
-        // Ajout des tronçons à la carte
-        for (Troncon t : troncons) {
+        String[] noms = {
+            "Boulevard Principal", "Avenue Centrale", "Rue de la Gare", "Chemin Vert",
+            "Boulevard Nord", "Rue Rivoli", "Avenue Sud", "Rue Courte",
+            "Passage Secret", "Boulevard Est", "Rue Longue", "Avenue Ouest",
+            "Chemin Diagonal", "Rue Serpentine", "Boulevard Courbe", "Route Forestière"
+        };
+
+        // 3. Création des tronçons avec longueurs aléatoires
+        for (int i = 0; i < connections.length; i++) {
+            int from = connections[i][0];
+            int to = connections[i][1];
+            
+            Troncon t = new TronconImpl(
+                noms[i],
+                40 + rand.nextInt(31), // Vitesse 40-70 km/h
+                intersections.get(from),
+                intersections.get(to),
+                80 + rand.nextInt(171) // Longueur 80-250m
+            );
             carte.ajouterTroncon(t);
         }
         
