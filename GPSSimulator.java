@@ -44,7 +44,6 @@ public class GPSSimulator extends JFrame {
                             maxY - minY + 2 * margin);
     }
 
-
     private void initModel() {
         carte = new CarteVille();
         int[][] coords = {
@@ -81,22 +80,22 @@ public class GPSSimulator extends JFrame {
                 g2.setFont(new Font("Arial", Font.PLAIN, 12));
 
                 // Calculer les dimensions
-            Rectangle bounds = calculateMapBounds();
-            int panelWidth = getWidth();
-            int panelHeight = getHeight();
+                Rectangle bounds = calculateMapBounds();
+                int panelWidth = getWidth();
+                int panelHeight = getHeight();
 
                 // Calculer le facteur d'échelle
-            double scale = Math.min((double)panelWidth / bounds.width, 
-                              (double)panelHeight / bounds.height);
+                double scale = Math.min((double)panelWidth / bounds.width, 
+                                      (double)panelHeight / bounds.height);
 
                 // Calculer le décalage pour centrer
-            int offsetX = (int)((panelWidth - bounds.width * scale) / 2);
-            int offsetY = (int)((panelHeight - bounds.height * scale) / 2);
+                int offsetX = (int)((panelWidth - bounds.width * scale) / 2);
+                int offsetY = (int)((panelHeight - bounds.height * scale) / 2);
 
                 // Appliquer la transformation
-            g2.translate(offsetX, offsetY);
-            g2.scale(scale, scale);
-            g2.translate(-bounds.x, -bounds.y);
+                g2.translate(offsetX, offsetY);
+                g2.scale(scale, scale);
+                g2.translate(-bounds.x, -bounds.y);
 
                 // Étape 1 : Dessiner toutes les lignes (tronçons et itinéraire)
                 for (Troncon t : carte.getTroncons()) {
@@ -174,7 +173,7 @@ public class GPSSimulator extends JFrame {
         accidentButton = new JButton("Ajouter Accident");
         trafficButton = new JButton("Ajouter Trafic");
         resetButton = new JButton("Réinitialiser");
-        itineraireButton = new JButton("Itinéraire");
+        itineraireButton = new JButton("Instructions");
         startCombo = new JComboBox<>();
         destCombo = new JComboBox<>();
         for (Intersection i : carte.getIntersections()) {
@@ -183,6 +182,9 @@ public class GPSSimulator extends JFrame {
         }
         startCombo.setSelectedIndex(0);
         destCombo.setSelectedIndex(10);
+        // Limiter la taille des JComboBox
+        startCombo.setPreferredSize(new Dimension(150, 25));
+        destCombo.setPreferredSize(new Dimension(150, 25));
 
         calcButton.addActionListener(e -> {
             recalcItineraire();
@@ -209,17 +211,51 @@ public class GPSSimulator extends JFrame {
         itineraireButton.addActionListener(e -> itineraireFrame.setVisible(true));
 
         JPanel control = new JPanel();
-        control.setLayout(new GridLayout(4, 2, 5, 5));
+        control.setLayout(new GridBagLayout());
         control.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        control.add(new JLabel("Départ:"));
-        control.add(startCombo);
-        control.add(new JLabel("Destination:"));
-        control.add(destCombo);
-        control.add(calcButton);
-        control.add(accidentButton);
-        control.add(trafficButton);
-        control.add(resetButton);
-        control.add(itineraireButton);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.anchor = GridBagConstraints.CENTER;
+
+        // Ligne 1 : Départ et Destination côte à côte
+        JPanel selectionPanel = new JPanel();
+        selectionPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        selectionPanel.add(new JLabel("Départ :"));
+        selectionPanel.add(startCombo);
+        selectionPanel.add(new JLabel("Destination :"));
+        selectionPanel.add(destCombo);
+
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1.0;
+        gbc.gridwidth = 1;
+        control.add(selectionPanel, gbc);
+
+        // Ligne 2 : Groupe 1 (Fonctions principales)
+        JPanel mainButtonPanel = new JPanel();
+        mainButtonPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        mainButtonPanel.add(calcButton);
+        mainButtonPanel.add(itineraireButton);
+
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.weightx = 1.0;
+        gbc.gridwidth = 1;
+        control.add(mainButtonPanel, gbc);
+
+        // Ligne 3 : Groupe 2 (Actions sur la carte)
+        JPanel mapActionPanel = new JPanel();
+        mapActionPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        mapActionPanel.add(trafficButton);
+        mapActionPanel.add(accidentButton);
+        mapActionPanel.add(resetButton);
+
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.weightx = 1.0;
+        gbc.gridwidth = 1;
+        control.add(mapActionPanel, gbc);
 
         getContentPane().setLayout(new BorderLayout());
         getContentPane().add(mapPanel, BorderLayout.CENTER);
