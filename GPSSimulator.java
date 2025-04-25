@@ -5,61 +5,44 @@ import java.util.*;
 import java.util.List;
 
 public class GPSSimulator extends JFrame {
+    // Modèle
     private CarteVille carte;
     private GPS gps;
+    private List<Troncon> currentRoute = new ArrayList<>();
+    private Intersection currentPositionNode;
+
+    // UI
     private JPanel mapPanel;
     private JComboBox<String> startCombo, destCombo;
-    private JButton calcButton, accidentButton, trafficButton, resetButton, itineraireButton;
-    private JFrame itineraireFrame;
-    private JTextArea itineraireArea;
-    private Vehicule vehicule;
-    private javax.swing.Timer timer;
+    private JButton calcRouteBtn, moveBtn, addTrafficBtn, addAccidentBtn, removeObsBtn, resetBtn;
+    private JFrame logFrame;
+    private JTextArea logArea;
 
     public GPSSimulator() {
         super("GPS Simulator");
-        setResizable(true);
         initModel();
         initUI();
-        initItineraireWindow();
+        initLogWindow();
         pack();
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
     }
 
-    private Rectangle calculateMapBounds() {
-        int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE;
-        int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE;
-
-        for (Intersection i : carte.getIntersections()) {
-            minX = Math.min(minX, i.x);
-            minY = Math.min(minY, i.y);
-            maxX = Math.max(maxX, i.x);
-            maxY = Math.max(maxY, i.y);
-        }
-
-        // Ajouter une marge autour de la carte
-        int margin = 50;
-        return new Rectangle(minX - margin, minY - margin, 
-                            maxX - minX + 2 * margin, 
-                            maxY - minY + 2 * margin);
-    }
-
-
     private void initModel() {
         carte = new CarteVille();
         int[][] coords = {
-            {100,400},{250,200},{250,400},{250,600},
-            {400,200},{400,400},{400,600},
-            {550,200},{550,400},{550,600},
-            {700,400}
+                {100, 400}, {250, 200}, {250, 400}, {250, 600},
+                {400, 200}, {400, 400}, {400, 600},
+                {550, 200}, {550, 400}, {550, 600},
+                {700, 400}
         };
         for (int i = 0; i < coords.length; i++) {
             carte.ajouterIntersection(new Intersection(i, coords[i][0], coords[i][1]));
         }
         int[][] edges = {
-            {1,2},{2,3},{4,5},{5,6},{7,8},{8,9},
-            {2,5},{5,8},{1,4},{4,7},{3,6},{6,9},
-            {0,1},{0,3},{10,9},{10,7}
+                {1, 2}, {2, 3}, {4, 5}, {5, 6}, {7, 8}, {8, 9},
+                {2, 5}, {5, 8}, {1, 4}, {4, 7}, {3, 6}, {6, 9},
+                {0, 1}, {0, 3}, {10, 9}, {10, 7}
         };
         for (int[] e : edges) {
             Intersection a = carte.getIntersections().get(e[0]);
@@ -70,181 +53,189 @@ public class GPSSimulator extends JFrame {
         }
         for (Troncon t : carte.getTroncons()) t.setEtat(EtatTroncon.FLUIDE);
         gps = new GPS(carte);
+        currentPositionNode = carte.getIntersections().get(0);
     }
 
     private void initUI() {
         mapPanel = new JPanel() {
+            @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setFont(new Font("Arial", Font.PLAIN, 12));
-
-                // Calculer les dimensions
-            Rectangle bounds = calculateMapBounds();
-            int panelWidth = getWidth();
-            int panelHeight = getHeight();
-
-                // Calculer le facteur d'échelle
-            double scale = Math.min((double)panelWidth / bounds.width, 
-                              (double)panelHeight / bounds.height);
-
-                // Calculer le décalage pour centrer
-            int offsetX = (int)((panelWidth - bounds.width * scale) / 2);
-            int offsetY = (int)((panelHeight - bounds.height * scale) / 2);
-
-                // Appliquer la transformation
-            g2.translate(offsetX, offsetY);
-            g2.scale(scale, scale);
-            g2.translate(-bounds.x, -bounds.y);
-
-                // Étape 1 : Dessiner toutes les lignes (tronçons et itinéraire)
+                Rectangle bounds = calculateMapBounds();
+                int w = getWidth(), h = getHeight();
+                double scale = Math.min((double) w / bounds.width, (double) h / bounds.height);
+                int offX = (int) ((w - bounds.width * scale) / 2);
+                int offY = (int) ((h - bounds.height * scale) / 2);
+                g2.translate(offX, offY);
+                g2.scale(scale, scale);
+                g2.translate(-bounds.x, -bounds.y);
                 for (Troncon t : carte.getTroncons()) {
-                    switch (t.getEtat()) {
-                        case FLUIDE: g2.setColor(Color.BLACK); break;
-                        case FAIBLE: g2.setColor(Color.GREEN); break;
-                        case MODERE: g2.setColor(Color.ORANGE); break;
-                        case INTENSE: g2.setColor(Color.RED); break;
-                        case ACCIDENT: g2.setColor(Color.MAGENTA); break;
-                    }
+                    g2.setColor(t.getEtat().getColor());
                     g2.setStroke(new BasicStroke(2));
                     g2.drawLine(t.getA().x, t.getA().y, t.getB().x, t.getB().y);
                 }
-
-                if (vehicule != null) {
-                    g2.setColor(new Color(0, 0, 255, 200));
-                    g2.setStroke(new BasicStroke(4));
-                    for (int i = 0; i < vehicule.currentSegment; i++) {
-                        Intersection a = vehicule.itineraire.get(i);
-                        Intersection b = vehicule.itineraire.get(i+1);
-                        g2.drawLine(a.x, a.y, b.x, b.y);
+                if (!currentRoute.isEmpty()) {
+                    g2.setColor(Color.BLUE);
+                    g2.setStroke(new BasicStroke(3));
+                    for (Troncon t : currentRoute) {
+                        g2.drawLine(t.getA().x, t.getA().y, t.getB().x, t.getB().y);
                     }
                 }
-
-                // Étape 2 : Dessiner les cercles des intersections
                 for (Intersection i : carte.getIntersections()) {
                     g2.setColor(Color.BLACK);
                     g2.fillOval(i.x - 5, i.y - 5, 10, 10);
                 }
-
-                // Étape 3 : Dessiner le véhicule (s'il existe)
-                if (vehicule != null) {
-                    vehicule.draw(g2);
-                }
-
-                // Étape 4 : Dessiner tous les textes avec fond semi-transparent
-                g2.setFont(new Font("Arial", Font.PLAIN, 12));
-                for (Troncon t : carte.getTroncons()) {
-                    int mx = (t.getA().x + t.getB().x) / 2;
-                    int my = (t.getA().y + t.getB().y) / 2 - 10; // Décalage vers le haut
-                    String text = t.getNomRue();
-                    FontMetrics fm = g2.getFontMetrics();
-                    int textWidth = fm.stringWidth(text);
-                    int textHeight = fm.getHeight();
-
-                    // Dessiner un fond semi-transparent
-                    g2.setColor(new Color(255, 255, 255, 180)); // Blanc avec opacité
-                    g2.fillRect(mx - 2, my - textHeight + 3, textWidth + 4, textHeight);
-                    // Dessiner le texte
-                    g2.setColor(Color.BLACK);
-                    g2.drawString(text, mx, my);
-                }
-
-                for (Intersection i : carte.getIntersections()) {
-                    String text = String.valueOf(i.id);
-                    FontMetrics fm = g2.getFontMetrics();
-                    int textWidth = fm.stringWidth(text);
-                    int textHeight = fm.getHeight();
-                    int textX = i.x + 12; // Décalage plus important vers la droite
-                    int textY = i.y - 8;  // Légère ajuste vers le haut
-
-                    // Dessiner un fond semi-transparent
-                    g2.setColor(new Color(255, 255, 255, 180)); // Blanc avec opacité
-                    g2.fillRect(textX - 2, textY - textHeight + 3, textWidth + 4, textHeight);
-                    // Dessiner le texte
-                    g2.setColor(Color.BLACK);
-                    g2.drawString(text, textX, textY);
+                if (currentPositionNode != null) {
+                    g2.setColor(Color.RED);
+                    g2.fillOval(currentPositionNode.x - 6, currentPositionNode.y - 6, 12, 12);
                 }
             }
         };
-        mapPanel.setPreferredSize(new Dimension(700, 500)); // Taille par défaut
-        mapPanel.setMinimumSize(new Dimension(300, 300));   // Taille minimale
+        mapPanel.setPreferredSize(new Dimension(700, 500));
 
-        calcButton = new JButton("Calculer Itinéraire");
-        accidentButton = new JButton("Ajouter Accident");
-        trafficButton = new JButton("Ajouter Trafic");
-        resetButton = new JButton("Réinitialiser");
-        itineraireButton = new JButton("Itinéraire");
         startCombo = new JComboBox<>();
         destCombo = new JComboBox<>();
         for (Intersection i : carte.getIntersections()) {
-            startCombo.addItem("Départ " + i.id);
-            destCombo.addItem("Destination " + i.id);
+            String label = String.format("Sommet %d", i.id);
+            startCombo.addItem(label);
+            destCombo.addItem(label);
         }
         startCombo.setSelectedIndex(0);
         destCombo.setSelectedIndex(10);
 
-        calcButton.addActionListener(e -> {
-            recalcItineraire();
-        });
-        accidentButton.addActionListener(e -> {
-            addAccident();
+        calcRouteBtn = new JButton("Calculer Itinéraire");
+        moveBtn = new JButton("Démarrer Mouvement");
+        addTrafficBtn = new JButton("Ajouter Trafic");
+        addAccidentBtn = new JButton("Ajouter Accident");
+        removeObsBtn = new JButton("Supprimer Trafic/Accident");
+        resetBtn = new JButton("Réinitialiser");
+
+        calcRouteBtn.addActionListener(e -> recalcItineraire());
+        moveBtn.addActionListener(e -> startVehicleMovement());
+        addAccidentBtn.addActionListener(e -> {
+            addObstacle(EtatTroncon.ACCIDENT);
             log("Accident ajouté");
         });
-        trafficButton.addActionListener(e -> {
+        addTrafficBtn.addActionListener(e -> {
             addTraffic();
             log("Trafic ajouté");
         });
-        resetButton.addActionListener(e -> {
-            clearAccidents();
-            clearTrafic();
-            vehicule = null; // Supprimer l'itinéraire affiché
-            if (timer != null && timer.isRunning()) {
-                timer.stop();
-            }
-            itineraireArea.setText(""); // Réinitialiser les logs
-            log("Réinitialisation complète");
+        removeObsBtn.addActionListener(e -> openRemoveObstacleDialog());
+        resetBtn.addActionListener(e -> {
+            for (Troncon t : carte.getTroncons()) t.setEtat(EtatTroncon.FLUIDE);
+            currentRoute.clear();
+            currentPositionNode = carte.getIntersections().get(0);
+            logArea.setText("");
             mapPanel.repaint();
+            log("Réinitialisation complète");
         });
-        itineraireButton.addActionListener(e -> itineraireFrame.setVisible(true));
 
-        JPanel control = new JPanel();
-        control.setLayout(new GridLayout(4, 2, 5, 5));
-        control.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        control.add(new JLabel("Départ:"));
-        control.add(startCombo);
-        control.add(new JLabel("Destination:"));
-        control.add(destCombo);
-        control.add(calcButton);
-        control.add(accidentButton);
-        control.add(trafficButton);
-        control.add(resetButton);
-        control.add(itineraireButton);
+        JPanel inputPanel = new JPanel();
+        inputPanel.setLayout(new BoxLayout(inputPanel, BoxLayout.Y_AXIS));
+        inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        inputPanel.add(new JLabel("Départ :"));
+        inputPanel.add(startCombo);
+        inputPanel.add(Box.createVerticalStrut(5));
+        inputPanel.add(new JLabel("Destination :"));
+        inputPanel.add(destCombo);
+
+        JPanel controlsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 8));
+        controlsPanel.add(calcRouteBtn);
+        controlsPanel.add(moveBtn);
+        controlsPanel.add(addAccidentBtn);
+        controlsPanel.add(addTrafficBtn);
+        controlsPanel.add(removeObsBtn);
+        controlsPanel.add(resetBtn);
 
         getContentPane().setLayout(new BorderLayout());
+        getContentPane().add(inputPanel, BorderLayout.NORTH);
         getContentPane().add(mapPanel, BorderLayout.CENTER);
-        getContentPane().add(control, BorderLayout.SOUTH);
+        getContentPane().add(controlsPanel, BorderLayout.SOUTH);
     }
 
-    private void initItineraireWindow() {
-        itineraireFrame = new JFrame("Itinéraire");
-        itineraireArea = new JTextArea(20, 40);
-        itineraireArea.setEditable(false);
-        itineraireFrame.add(new JScrollPane(itineraireArea));
-        itineraireFrame.pack();
-        itineraireFrame.setLocationRelativeTo(this);
-        itineraireFrame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+    private void initLogWindow() {
+        logFrame = new JFrame("Itinéraire & Logs");
+        logArea = new JTextArea(20, 40);
+        logArea.setEditable(false);
+        logFrame.add(new JScrollPane(logArea));
+        logFrame.pack();
+        logFrame.setLocationRelativeTo(this);
+        logFrame.setVisible(true);
     }
 
     private void log(String message) {
-        itineraireArea.append(message + "\n");
+        logArea.append(message + "\n");
     }
 
-    private void addAccident() {
-        Troncon t = chooseTroncon("Choisissez un tronçon (accident) :");
+    private Rectangle calculateMapBounds() {
+        int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE;
+        for (Intersection i : carte.getIntersections()) {
+            minX = Math.min(minX, i.x);
+            minY = Math.min(minY, i.y);
+            maxX = Math.max(maxX, i.x);
+            maxY = Math.max(maxY, i.y);
+        }
+        int margin = 50;
+        return new Rectangle(minX - margin, minY - margin,
+                maxX - minX + 2 * margin, maxY - minY + 2 * margin);
+    }
+
+    private void recalcItineraire() {
+        logArea.setText("");
+        int startIdx = startCombo.getSelectedIndex();
+        int destIdx = destCombo.getSelectedIndex();
+        Intersection start = carte.getIntersections().get(startIdx);
+        Intersection dest = carte.getIntersections().get(destIdx);
+        gps.setDestination(dest);
+        List<Intersection> path = gps.calculerItineraire(start);
+        currentRoute.clear();
+        if (path != null && path.size() > 1) {
+            log("Itinéraire calculé :");
+            for (int i = 0; i < path.size() - 1; i++) {
+                Intersection a = path.get(i), b = path.get(i + 1);
+                Troncon t = carte.findTroncon(a, b);
+                if (t != null) {
+                    currentRoute.add(t);
+                    log(String.format(" -> %s", t.getNomRue()));
+                }
+            }
+            currentPositionNode = start;
+            mapPanel.repaint();
+        } else {
+            log("Aucun itinéraire possible.");
+        }
+    }
+
+    private void startVehicleMovement() {
+        if (currentRoute.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Calculez d'abord un itinéraire.");
+            return;
+        }
+        calcRouteBtn.setEnabled(false);
+        new Thread(() -> {
+            for (Troncon t : currentRoute) {
+                currentPositionNode = t.getB();
+                SwingUtilities.invokeLater(() -> mapPanel.repaint());
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException ex) {
+                }
+            }
+            SwingUtilities.invokeLater(() -> {
+                log("Arrivé à destination !");
+                calcRouteBtn.setEnabled(true);
+                // Ne pas mettre à jour startCombo ici
+            });
+        }).start();
+    }
+
+    private void addObstacle(EtatTroncon etat) {
+        Troncon t = chooseTroncon("Choisissez un tronçon :");
         if (t != null) {
-            t.setEtat(EtatTroncon.ACCIDENT);
-            recalcItineraire();
+            t.setEtat(etat);
             mapPanel.repaint();
         }
     }
@@ -253,41 +244,65 @@ public class GPSSimulator extends JFrame {
         Troncon t = chooseTroncon("Choisissez un tronçon (trafic) :");
         if (t != null && t.getEtat() != EtatTroncon.ACCIDENT) {
             String[] levels = {"Faible", "Modéré", "Intense"};
-            String level = (String) JOptionPane.showInputDialog(
-                this, "Niveau de trafic :", "Selection",
-                JOptionPane.PLAIN_MESSAGE, null, levels, levels[0]
+            String sel = (String) JOptionPane.showInputDialog(
+                    this, "Niveau de trafic :", "Trafic",
+                    JOptionPane.PLAIN_MESSAGE, null, levels, levels[0]
             );
-            if (level != null) {
-                switch (level) {
-                    case "Faible": t.setEtat(EtatTroncon.FAIBLE); break;
-                    case "Modéré": t.setEtat(EtatTroncon.MODERE); break;
-                    case "Intense": t.setEtat(EtatTroncon.INTENSE); break;
+            if (sel != null) {
+                switch (sel) {
+                    case "Faible":
+                        t.setEtat(EtatTroncon.FAIBLE);
+                        break;
+                    case "Modéré":
+                        t.setEtat(EtatTroncon.MODERE);
+                        break;
+                    case "Intense":
+                        t.setEtat(EtatTroncon.INTENSE);
+                        break;
                 }
-                recalcItineraire();
                 mapPanel.repaint();
             }
         }
     }
 
-    private void clearAccidents() {
-        for (Troncon t : carte.getTroncons()) {
-            if (t.getEtat() == EtatTroncon.ACCIDENT) t.setEtat(EtatTroncon.FLUIDE);
-        }
-    }
-
-    private void clearTrafic() {
-        for (Troncon t : carte.getTroncons()) {
-            if (t.getEtat() == EtatTroncon.FAIBLE || t.getEtat() == EtatTroncon.MODERE || t.getEtat() == EtatTroncon.INTENSE) {
+    private void openRemoveObstacleDialog() {
+        JDialog dlg = new JDialog(this, "Supprimer obstacle", true);
+        dlg.setLayout(new BorderLayout());
+        String[] names = carte.getTroncons().stream()
+                .map(Troncon::getNomRue).toArray(String[]::new);
+        JList<String> list = new JList<>(names);
+        dlg.add(new JScrollPane(list), BorderLayout.CENTER);
+        JRadioButton optT = new JRadioButton("Retirer Trafic", true);
+        JRadioButton optA = new JRadioButton("Retirer Accident");
+        ButtonGroup grp = new ButtonGroup();
+        grp.add(optT);
+        grp.add(optA);
+        JButton apply = new JButton("Appliquer");
+        apply.addActionListener(e -> {
+            int idx = list.getSelectedIndex();
+            if (idx >= 0) {
+                Troncon t = carte.getTroncons().get(idx);
                 t.setEtat(EtatTroncon.FLUIDE);
+                mapPanel.repaint();
+                log("Obstacle retiré sur " + t.getNomRue());
             }
-        }
+            dlg.dispose();
+        });
+        JPanel bottom = new JPanel(new FlowLayout());
+        bottom.add(optT);
+        bottom.add(optA);
+        bottom.add(apply);
+        dlg.add(bottom, BorderLayout.SOUTH);
+        dlg.pack();
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
     }
 
     private Troncon chooseTroncon(String msg) {
         List<Troncon> list = carte.getTroncons();
         String[] names = list.stream().map(Troncon::getNomRue).toArray(String[]::new);
         String sel = (String) JOptionPane.showInputDialog(
-                this, msg, "Selection",
+                this, msg, "Choix Tronçon",
                 JOptionPane.PLAIN_MESSAGE, null, names, names[0]
         );
         if (sel == null) return null;
@@ -295,159 +310,129 @@ public class GPSSimulator extends JFrame {
         return null;
     }
 
-    private void recalcItineraire() {
-        itineraireArea.setText(""); // Réinitialiser les logs
-        Intersection start = carte.getIntersections().get(startCombo.getSelectedIndex());
-        Intersection end = carte.getIntersections().get(destCombo.getSelectedIndex());
-        gps.setDestination(end);
-        List<Intersection> chemin = gps.calculerItineraire(start);
-        
-        if (chemin != null && chemin.size() > 1) {
-            // Generate and log navigation instructions
-            List<String> instructions = generateNavigationInstructions(chemin);
-            log("Voici les instructions à suivre");
-            for (String instruction : instructions) {
-                log(instruction);
-            }
+    static class Intersection {
+        public final int id, x, y;
 
-            vehicule = new Vehicule(chemin);
-            if (timer != null && timer.isRunning()) timer.stop();
-            
-            timer = new javax.swing.Timer(300, e -> {
-                if (!vehicule.avancer()) {
-                    timer.stop();
-                    log("Vous êtes arrivé à destination");
-                }
-                mapPanel.repaint();
-            });
-            timer.start();
-        } else {
-            log("Aucun itinéraire possible");
+        public Intersection(int id, int x, int y) {
+            this.id = id;
+            this.x = x;
+            this.y = y;
         }
-        mapPanel.repaint();
+
+        public double distanceVers(Intersection o) {
+            return Math.hypot(x - o.x, y - o.y);
+        }
     }
 
-    private List<String> generateNavigationInstructions(List<Intersection> chemin) {
-        List<String> instructions = new ArrayList<>();
-        if (chemin.size() < 2) return instructions;
+    static class Troncon {
+        private final Intersection a, b;
+        private final String nomRue;
+        private EtatTroncon etat;
 
-        // Generate instruction for each intersection except the first
-        for (int i = 1; i < chemin.size(); i++) {
-            instructions.add("Aller vers le sommet " + chemin.get(i).id);
+        public Troncon(Intersection a, Intersection b, double d, String nom) {
+            this.a = a;
+            this.b = b;
+            this.nomRue = nom;
+            this.etat = EtatTroncon.FLUIDE;
         }
 
-        return instructions;
+        public Intersection getA() {
+            return a;
+        }
+
+        public Intersection getB() {
+            return b;
+        }
+
+        public String getNomRue() {
+            return nomRue;
+        }
+
+        public EtatTroncon getEtat() {
+            return etat;
+        }
+
+        public void setEtat(EtatTroncon e) {
+            etat = e;
+        }
     }
 
-    private class Vehicule {
-        private List<Intersection> itineraire;
-        private int currentSegment;
-        private Intersection position;
-        
-        public Vehicule(List<Intersection> itineraire) {
-            this.itineraire = itineraire;
-            this.currentSegment = 0;
-            this.position = itineraire.get(0);
+    enum EtatTroncon {
+        FLUIDE(1.0, Color.BLACK), FAIBLE(1.3, Color.GREEN), MODERE(1.7, Color.ORANGE), INTENSE(2.5, Color.RED), ACCIDENT(Double.POSITIVE_INFINITY, Color.MAGENTA);
+        private final double weight;
+        private final Color color;
+
+        EtatTroncon(double w, Color c) {
+            weight = w;
+            color = c;
         }
-        
-        public boolean avancer() {
-            if (currentSegment >= itineraire.size() - 1) {
-                return false;
-            }
-            
-            currentSegment++;
-            position = itineraire.get(currentSegment);
-            
-            return currentSegment < itineraire.size() - 1;
+
+        public double getWeight() {
+            return weight;
         }
-        
-        public void draw(Graphics2D g2) {
-            g2.setColor(Color.GREEN);
-            g2.fillOval(itineraire.get(0).x - 8, itineraire.get(0).y - 8, 16, 16);
-            
-            g2.setColor(Color.RED);
-            g2.fillOval(position.x - 6, position.y - 6, 12, 12);
-            
-            if (position == itineraire.get(itineraire.size()-1)) {
-                g2.setColor(Color.MAGENTA);
-                g2.fillOval(position.x - 8, position.y - 8, 16, 16);
-            }
+
+        public Color getColor() {
+            return color;
         }
     }
 
     static class CarteVille {
-        private List<Intersection> intersections = new ArrayList<>();
-        private List<Troncon> troncons = new ArrayList<>();
-        
-        public void ajouterIntersection(Intersection i) { intersections.add(i); }
-        public void ajouterTroncon(Troncon t) { troncons.add(t); }
-        public List<Intersection> getIntersections() { return intersections; }
-        public List<Troncon> getTroncons() { return troncons; }
-    }
+        private final List<Intersection> intersections = new ArrayList<>();
+        private final List<Troncon> troncons = new ArrayList<>();
 
-    static class Intersection {
-        public int id, x, y;
-        public Intersection(int id, int x, int y) { this.id = id; this.x = x; this.y = y; }
-        public double distanceVers(Intersection o) { return Math.hypot(x - o.x, y - o.y); }
-    }
-
-    static class Troncon {
-        private Intersection a, b;
-        private double distance;
-        private String nomRue;
-        private EtatTroncon etat;
-        
-        public Troncon(Intersection a, Intersection b, double distance, String nomRue) {
-            this.a = a;
-            this.b = b;
-            this.distance = distance;
-            this.nomRue = nomRue;
-            this.etat = EtatTroncon.FLUIDE;
+        public void ajouterIntersection(Intersection i) {
+            intersections.add(i);
         }
-        
-        public Intersection getA() { return a; }
-        public Intersection getB() { return b; }
-        public double getDistance() { return distance; }
-        public String getNomRue() { return nomRue; }
-        public EtatTroncon getEtat() { return etat; }
-        public void setEtat(EtatTroncon etat) { this.etat = etat; }
-    }
 
-    enum EtatTroncon {
-        FLUIDE(1.0), FAIBLE(1.3), MODERE(1.7), INTENSE(2.5), ACCIDENT(Double.POSITIVE_INFINITY);
-        
-        private final double weight;
-        EtatTroncon(double weight) { this.weight = weight; }
-        public double getWeight() { return weight; }
+        public void ajouterTroncon(Troncon t) {
+            troncons.add(t);
+        }
+
+        public List<Intersection> getIntersections() {
+            return intersections;
+        }
+
+        public List<Troncon> getTroncons() {
+            return troncons;
+        }
+
+        public Troncon findTroncon(Intersection a, Intersection b) {
+            for (Troncon t : troncons) {
+                if ((t.a == a && t.b == b) || (t.a == b && t.b == a)) return t;
+            }
+            return null;
+        }
     }
 
     static class GPS {
-        private CarteVille carte;
+        private final CarteVille carte;
         private Intersection destination;
-        
-        public GPS(CarteVille carte) { this.carte = carte; }
-        public void setDestination(Intersection d) { destination = d; }
-        
+
+        public GPS(CarteVille c) {
+            carte = c;
+        }
+
+        public void setDestination(Intersection d) {
+            destination = d;
+        }
+
         public List<Intersection> calculerItineraire(Intersection depart) {
             Map<Intersection, Double> dist = new HashMap<>();
             Map<Intersection, Intersection> prev = new HashMap<>();
-            PriorityQueue<Intersection> pq = new PriorityQueue<>(Comparator.comparing(dist::get));
-            
-            for (Intersection i : carte.getIntersections()) {
-                dist.put(i, Double.POSITIVE_INFINITY);
-            }
+            Comparator<Intersection> cmp = Comparator.comparing(dist::get);
+            PriorityQueue<Intersection> pq = new PriorityQueue<>(cmp);
+            for (Intersection i : carte.getIntersections()) dist.put(i, Double.POSITIVE_INFINITY);
             dist.put(depart, 0.0);
             pq.add(depart);
-            
             while (!pq.isEmpty()) {
                 Intersection u = pq.poll();
                 if (u == destination) break;
-                
                 for (Troncon t : carte.getTroncons()) {
-                    if (t.getA() == u || t.getB() == u) {
-                        Intersection v = (t.getA() == u) ? t.getB() : t.getA();
-                        double weight = t.getDistance() * t.getEtat().getWeight();
-                        double alt = dist.get(u) + weight;
+                    Intersection v = null;
+                    if (t.getA() == u) v = t.getB();
+                    else if (t.getB() == u) v = t.getA();
+                    if (v != null) {
+                        double alt = dist.get(u) + t.getEtat().getWeight();
                         if (alt < dist.get(v)) {
                             dist.put(v, alt);
                             prev.put(v, u);
@@ -457,18 +442,15 @@ public class GPSSimulator extends JFrame {
                     }
                 }
             }
-            
-            List<Intersection> chemin = new ArrayList<>();
-            Intersection step = destination;
-            if (!dist.get(step).isInfinite()) {
-                while (prev.containsKey(step)) {
-                    chemin.add(0, step);
+            LinkedList<Intersection> path = new LinkedList<>();
+            if (prev.containsKey(destination) || depart == destination) {
+                Intersection step = destination;
+                while (step != null) {
+                    path.addFirst(step);
                     step = prev.get(step);
                 }
-                chemin.add(0, depart);
             }
-            
-            return chemin.isEmpty() ? null : chemin;
+            return path.size() < 2 ? null : path;
         }
     }
 
