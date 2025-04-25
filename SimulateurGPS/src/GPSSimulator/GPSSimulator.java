@@ -1,20 +1,32 @@
+/*Version Finale, 25 avril 2025, par Émile Larocque, Hugo Thivierge, Vincent Lafleur, Félix Ladouceur, Sébastien Roussel, Olivier Rossignol*/
 package GPSSimulator;
 import java.awt.*;
 import javax.swing.*;
 import java.util.*;
 import java.util.List;
 
+/** Classe principale du simulateur GPS qui gère l'interface graphique et la logique d'interaction.
+ * Cette classe étend JFrame et combine la visualisation de la carte avec les fonctionnalités de calcul d'itinéraire.
+ */
 public class GPSSimulator extends JFrame {
+
+    /*Déclaration des composants principaux */
     private CarteVille carte;
     private GPS gps;
     private JPanel mapPanel;
     private JComboBox<String> startCombo, destCombo;
     private JButton calcButton, accidentButton, trafficButton, resetButton, itineraireButton;
+
+    /*Boutons de contrôle */
     private JFrame itineraireFrame;
     private JTextArea itineraireArea;
     private Vehicule vehicule;
     private javax.swing.Timer timer;
 
+    /**
+     * Constructeur principal qui initialise l'interface et le modèle.
+     * Configure la fenêtre principale, initialise la carte et l'interface utilisateur.
+     */
     public GPSSimulator() {
         super("Simulateur de GPS");
         setResizable(true);
@@ -26,6 +38,11 @@ public class GPSSimulator extends JFrame {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
     }
 
+     /**
+     * Calcule les limites de la carte pour l'affichage.
+     * Parcourt toutes les intersections pour déterminer la zone à afficher.
+     * Ajoute une marge de 50 pixels autour de la zone utile.
+     */
     private Rectangle calculateMapBounds() {
         int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE;
@@ -44,6 +61,11 @@ public class GPSSimulator extends JFrame {
                             maxY - minY + 2 * margin);
     }
 
+    /**
+     * Initialise le modèle de données avec une carte prédéfinie.
+     * Crée 11 intersections et les connecte avec des tronçons.
+     * Tous les tronçons sont initialisés avec un état FLUIDE.
+     */
     private void initModel() {
         carte = new CarteVille();
         int[][] coords = {
@@ -71,8 +93,26 @@ public class GPSSimulator extends JFrame {
         gps = new GPS(carte);
     }
 
+    /**
+     * Initialise l'interface utilisateur principale.
+     * Configure :
+     * - Le panel de carte avec son rendu personnalisé
+     * - Les contrôles de sélection (combobox)
+     * - Les boutons d'action et leurs gestionnaires d'événements
+     * - La disposition des composants avec GridBagLayout
+     */
     private void initUI() {
         mapPanel = new JPanel() {
+
+            /**
+             * Méthode de rendu principal qui dessine :
+             * 1. Les tronçons routiers (couleur selon l'état)
+             * 2. L'itinéraire calculé (ligne bleue)
+             * 3. Les intersections (cercles noirs)
+             * 4. Le véhicule (position actuelle)
+             * 5. Les étiquettes de tronçons et intersections
+             * Applique une transformation pour adapter l'affichage à la taille du panel.
+             */
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g;
@@ -166,8 +206,8 @@ public class GPSSimulator extends JFrame {
                 }
             }
         };
-        mapPanel.setPreferredSize(new Dimension(700, 500)); // Taille par défaut
-        mapPanel.setMinimumSize(new Dimension(300, 300));   // Taille minimale
+        mapPanel.setPreferredSize(new Dimension(700, 500)); // Taille par défaut de l'interface
+        mapPanel.setMinimumSize(new Dimension(300, 300));   // Taille minimale de l'interface
 
         calcButton = new JButton("Calculer Itinéraire");
         accidentButton = new JButton("Ajouter Accident");
@@ -274,6 +314,10 @@ public class GPSSimulator extends JFrame {
         getContentPane().add(control, BorderLayout.SOUTH);
     }
 
+    /**
+     * Initialise la fenêtre secondaire pour afficher le journal de navigation.
+     * Configure une JTextArea dans une JScrollPane avec les dimensions appropriées.
+     */
     private void initItineraireWindow() {
         itineraireFrame = new JFrame("Journal");
         itineraireArea = new JTextArea(20, 40);
@@ -289,6 +333,7 @@ public class GPSSimulator extends JFrame {
         itineraireArea.append(message + "\n");
     }
 
+    /*Ajoute des accidents */
     private void addAccident() {
         Troncon t = chooseTroncon("Choisissez un tronçon (accident) :");
         if (t != null) {
@@ -297,6 +342,7 @@ public class GPSSimulator extends JFrame {
         }
     }
 
+    /*Ajoute les états de conduite */
     private void addTraffic() {
         Troncon t = chooseTroncon("Choisissez un tronçon (trafic) :");
         if (t != null && t.getEtat() != EtatTroncon.ACCIDENT) {
@@ -330,6 +376,7 @@ public class GPSSimulator extends JFrame {
         }
     }
 
+    /*Méthode pour choisir les bons Tronçons */
     private Troncon chooseTroncon(String msg) {
         List<Troncon> list = carte.getTroncons();
         String[] names = list.stream().map(Troncon::getNomRue).toArray(String[]::new);
@@ -342,6 +389,11 @@ public class GPSSimulator extends JFrame {
         return null;
     }
 
+    /**
+     * Recalcule l'itinéraire en fonction des sélections actuelles.
+     * Affiche les instructions dans la fenêtre de journal.
+     * Anime le véhicule le long du nouvel itinéraire.
+     */
     private void recalcItineraire() {
         itineraireArea.setText(""); // Réinitialiser les logs
         Intersection start = carte.getIntersections().get(startCombo.getSelectedIndex());
@@ -386,6 +438,10 @@ public class GPSSimulator extends JFrame {
         return instructions;
     }
 
+    /**
+     * Point d'entrée principal de l'application.
+     * Lance l'interface graphique dans le thread EDT de Swing.
+     */
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new GPSSimulator().setVisible(true));
     }
