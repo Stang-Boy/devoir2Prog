@@ -1,8 +1,7 @@
 import java.awt.*;
-import java.awt.event.*;
-import javax.swing.*;
 import java.util.*;
 import java.util.List;
+import javax.swing.*;
 
 /**
  * Simulateur GPS complet :
@@ -14,119 +13,104 @@ import java.util.List;
 public class GPSSimulator extends JFrame {
     private CarteVille carte;
     private GPS gps;
-    private Vehicule vehicule;
-
     private MapPanel mapPanel;
-    private JComboBox<String> destCombo;
-    private JButton startButton, accidentButton, clearAccButton;
-    private JButton trafficButton, clearTraffButton, recalcButton, logsButton;
-    private javax.swing.Timer animTimer;
-
+    private JComboBox<String> startCombo, destCombo;
+    private JButton calcButton, accidentButton, clearAccButton;
+    private JButton trafficButton, clearTraffButton, logsButton;
     private JFrame logsFrame;
     private JTextArea logsArea;
 
-    public GPSSimulator() {
-        super("GPS Simulator");
-        initModel();
-        initUI();
-        initLogsWindow();
-        pack();
-        setLocationRelativeTo(null);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+public GPSSimulator() {
+    super("GPS Simulator");
+    initModel();
+    initUI();
+    initLogsWindow();
+    pack();
+    setLocationRelativeTo(null);
+    setDefaultCloseOperation(EXIT_ON_CLOSE);
+}
+
+private void initModel() {
+    carte = new CarteVille();
+    int[][] coords = {
+        {100,400},{250,200},{250,400},{250,600},
+        {400,200},{400,400},{400,600},
+        {550,200},{550,400},{550,600},
+        {700,400}
+    };
+    for (int i = 0; i < coords.length; i++) {
+        carte.ajouterIntersection(new Intersection(i, coords[i][0], coords[i][1]));
     }
-
-    private void initModel() {
-        carte = new CarteVille();
-        int[][] coords = {
-                {100,400},{250,200},{250,400},{250,600},
-                {400,200},{400,400},{400,600},
-                {550,200},{550,400},{550,600},
-                {700,400}
-        };
-        for (int i = 0; i < coords.length; i++) {
-            carte.ajouterIntersection(new Intersection(i, coords[i][0], coords[i][1]));
-        }
-        int[][] edges = {
-                {1,2},{2,3},{4,5},{5,6},{7,8},{8,9},
-                {2,5},{5,8},{1,4},{4,7},{3,6},{6,9},
-                {0,1},{0,3},{10,9},{10,7}
-        };
-        for (int[] e : edges) {
-            Intersection a = carte.getIntersections().get(e[0]);
-            Intersection b = carte.getIntersections().get(e[1]);
-            double dist = a.distanceVers(b);
-            carte.ajouterTroncon(new Troncon(a, b, dist, "R" + e[0] + "-" + e[1]));
-        }
-        for (Troncon t : carte.getTroncons()) t.setEtat(EtatTroncon.FLUIDE);
-        gps = new GPS(carte);
-        Intersection start = carte.getIntersections().get(0);
-        vehicule = new Vehicule(start.x, start.y, start);
-        gps.setDestination(carte.getIntersections().get(10));
-        gps.calculerItineraire(start);
+    int[][] edges = {
+        {1,2},{2,3},{4,5},{5,6},{7,8},{8,9},
+        {2,5},{5,8},{1,4},{4,7},{3,6},{6,9},
+        {0,1},{0,3},{10,9},{10,7}
+    };
+    for (int[] e : edges) {
+        Intersection a = carte.getIntersections().get(e[0]);
+        Intersection b = carte.getIntersections().get(e[1]);
+        double dist = a.distanceVers(b);
+        carte.ajouterTroncon(new Troncon(a, b, dist, "R" + e[0] + "-" + e[1]));
     }
+    for (Troncon t : carte.getTroncons()) t.setEtat(EtatTroncon.FLUIDE);
+    gps = new GPS(carte);
+}
 
-    private void initUI() {
-        mapPanel = new MapPanel();
-        mapPanel.setPreferredSize(new Dimension(800, 800));
 
-        startButton     = new JButton("Démarrer");
-        accidentButton  = new JButton("Ajouter Accident");
-        clearAccButton  = new JButton("Effacer Accidents");
-        trafficButton   = new JButton("Ajouter Trafic");
-        clearTraffButton= new JButton("Effacer Trafic");
-        recalcButton    = new JButton("Recalculer Itinéraire");
-        logsButton      = new JButton("Logs");
-
-        destCombo = new JComboBox<>();
-        for (Intersection i : carte.getIntersections()) destCombo.addItem("Destination " + i.id);
-        destCombo.setSelectedIndex(10);
-
-        startButton.addActionListener(e -> {
-            startMoving();
-            log("Démarrage du trajet");
-        });
-        accidentButton.addActionListener(e -> {
-            addAccident();
-            log("Accident ajouté");
-        });
-        clearAccButton.addActionListener(e -> {
-            clearAccidents();
-            log("Accidents effacés");
-        });
-        trafficButton.addActionListener(e -> {
-            addTrafic();
-            log("Trafic ajouté");
-        });
-        clearTraffButton.addActionListener(e -> {
-            clearTrafic();
-            log("Trafic effacé");
-        });
-        recalcButton.addActionListener(e -> {
-            recalcItineraire();
-            log("Itinéraire recalculé");
-        });
-        logsButton.addActionListener(e -> logsFrame.setVisible(true));
-
-        JPanel control = new JPanel();
-        control.add(new JLabel("Destination:"));
-        control.add(destCombo);
-        control.add(startButton);
-        control.add(accidentButton);
-        control.add(clearAccButton);
-        control.add(trafficButton);
-        control.add(clearTraffButton);
-        control.add(recalcButton);
-        control.add(logsButton);
-
-        getContentPane().setLayout(new BorderLayout());
-        getContentPane().add(mapPanel, BorderLayout.CENTER);
-        getContentPane().add(control, BorderLayout.SOUTH);
-
-        animTimer = new javax.swing.Timer(40, e -> {
-            if (!gps.avancer(vehicule)) animTimer.stop();
-            mapPanel.repaint();
-        });
+private void initUI() {
+    mapPanel = new MapPanel();
+    mapPanel.setPreferredSize(new Dimension(800, 800));
+    calcButton = new JButton("Calculer Itinéraire");
+    accidentButton = new JButton("Ajouter Accident");
+    clearAccButton = new JButton("Effacer Accidents");
+    trafficButton = new JButton("Ajouter Trafic");
+    clearTraffButton = new JButton("Effacer Trafic");
+    logsButton = new JButton("Logs");
+    startCombo = new JComboBox<>();
+    destCombo = new JComboBox<>();
+    for (Intersection i : carte.getIntersections()) {
+        startCombo.addItem("Départ " + i.id);
+        destCombo.addItem("Destination " + i.id);
     }
+    startCombo.setSelectedIndex(0);
+    destCombo.setSelectedIndex(10);
+    calcButton.addActionListener(e -> {
+        recalcItineraire();
+        log("Itinéraire calculé");
+    });
+    accidentButton.addActionListener(e -> {
+        addAccident();
+        log("Accident ajouté");
+    });
+    clearAccButton.addActionListener(e -> {
+        clearAccidents();
+        log("Accidents effacés");
+    });
+    trafficButton.addActionListener(e -> {
+        addTrafic();
+        log("Trafic ajouté");
+    });
+    clearTraffButton.addActionListener(e -> {
+        clearTrafic();
+        log("Trafic effacé");
+    });
+    logsButton.addActionListener(e -> logsFrame.setVisible(true));
+    JPanel control = new JPanel();
+    control.add(new JLabel("Départ:"));
+    control.add(startCombo);
+    control.add(new JLabel("Destination:"));
+    control.add(destCombo);
+    control.add(calcButton);
+    control.add(accidentButton);
+    control.add(clearAccButton);
+    control.add(trafficButton);
+    control.add(clearTraffButton);
+    control.add(logsButton);
+    getContentPane().setLayout(new BorderLayout());
+    getContentPane().add(mapPanel, BorderLayout.CENTER);
+    getContentPane().add(control, BorderLayout.SOUTH);
+}
+
 
     private void initLogsWindow() {
         logsFrame = new JFrame("Logs");
@@ -142,10 +126,6 @@ public class GPSSimulator extends JFrame {
         logsArea.append("[" + new Date() + "] " + message + "\n");
     }
 
-    private void startMoving() {
-        gps.calculerItineraire(vehicule.current);
-        animTimer.start();
-    }
 
     private void addAccident() {
         Troncon t = chooseTroncon("Choisissez un tronçon (accident) :");
@@ -199,23 +179,17 @@ public class GPSSimulator extends JFrame {
         return null;
     }
 
+    
     private void recalcItineraire() {
-        Intersection start = findNearestIntersection();
-        vehicule.current = start;
+        Intersection start = carte.getIntersections().get(startCombo.getSelectedIndex());
         gps.setDestination(carte.getIntersections().get(destCombo.getSelectedIndex()));
         gps.calculerItineraire(start);
         mapPanel.repaint();
     }
+    
+    
+    
 
-    private Intersection findNearestIntersection() {
-        Intersection closest = null;
-        double minDist = Double.MAX_VALUE;
-        for (Intersection i : carte.getIntersections()) {
-            double d = Math.hypot(vehicule.x - i.x, vehicule.y - i.y);
-            if (d < minDist) { minDist = d; closest = i; }
-        }
-        return closest;
-    }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new GPSSimulator().setVisible(true));
@@ -224,6 +198,7 @@ public class GPSSimulator extends JFrame {
     /**
      * Panel de dessin principal
      */
+    
     private class MapPanel extends JPanel {
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
@@ -234,11 +209,11 @@ public class GPSSimulator extends JFrame {
                 int x2 = t.destination.x, y2 = t.destination.y;
                 Color c;
                 switch (t.getEtat()) {
-                    case FAIBLE:  c = Color.YELLOW; break;
-                    case MODERE:  c = Color.ORANGE; break;
-                    case INTENSE: c = Color.RED;    break;
+                    case FAIBLE: c = Color.YELLOW; break;
+                    case MODERE: c = Color.ORANGE; break;
+                    case INTENSE: c = Color.RED; break;
                     case ACCIDENT:c = Color.MAGENTA;break;
-                    default:      c = Color.BLACK;
+                    default: c = Color.BLACK;
                 }
                 g2.setColor(c);
                 g2.setStroke(new BasicStroke(4));
@@ -258,11 +233,9 @@ public class GPSSimulator extends JFrame {
             for (Troncon t : gps.itineraire) {
                 g2.drawLine(t.origine.x, t.origine.y, t.destination.x, t.destination.y);
             }
-            // véhicule
-            g2.setColor(Color.BLUE);
-            g2.fillOval(vehicule.x-8, vehicule.y-8, 16, 16);
         }
     }
+    
 
     // -------- Modèle --------
 
