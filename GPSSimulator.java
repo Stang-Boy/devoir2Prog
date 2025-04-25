@@ -29,22 +29,14 @@ public class GPSSimulator extends JFrame {
     private Rectangle calculateMapBounds() {
         int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE;
-<<<<<<< HEAD
-        
-=======
 
->>>>>>> 72df850304a31906c866e808287d8602dc37c3c3
         for (Intersection i : carte.getIntersections()) {
             minX = Math.min(minX, i.x);
             minY = Math.min(minY, i.y);
             maxX = Math.max(maxX, i.x);
             maxY = Math.max(maxY, i.y);
         }
-<<<<<<< HEAD
-        
-=======
 
->>>>>>> 72df850304a31906c866e808287d8602dc37c3c3
         // Ajouter une marge autour de la carte
         int margin = 50;
         return new Rectangle(minX - margin, minY - margin, 
@@ -52,10 +44,7 @@ public class GPSSimulator extends JFrame {
                             maxY - minY + 2 * margin);
     }
 
-<<<<<<< HEAD
-=======
 
->>>>>>> 72df850304a31906c866e808287d8602dc37c3c3
     private void initModel() {
         carte = new CarteVille();
         int[][] coords = {
@@ -90,26 +79,11 @@ public class GPSSimulator extends JFrame {
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setFont(new Font("Arial", Font.PLAIN, 12));
-<<<<<<< HEAD
-                
-=======
 
->>>>>>> 72df850304a31906c866e808287d8602dc37c3c3
                 // Calculer les dimensions
             Rectangle bounds = calculateMapBounds();
             int panelWidth = getWidth();
             int panelHeight = getHeight();
-<<<<<<< HEAD
-        
-                // Calculer le facteur d'échelle
-            double scale = Math.min((double)panelWidth / bounds.width, 
-                              (double)panelHeight / bounds.height);
-        
-                // Calculer le décalage pour centrer
-            int offsetX = (int)((panelWidth - bounds.width * scale) / 2);
-            int offsetY = (int)((panelHeight - bounds.height * scale) / 2);
-        
-=======
 
                 // Calculer le facteur d'échelle
             double scale = Math.min((double)panelWidth / bounds.width, 
@@ -119,16 +93,12 @@ public class GPSSimulator extends JFrame {
             int offsetX = (int)((panelWidth - bounds.width * scale) / 2);
             int offsetY = (int)((panelHeight - bounds.height * scale) / 2);
 
->>>>>>> 72df850304a31906c866e808287d8602dc37c3c3
                 // Appliquer la transformation
             g2.translate(offsetX, offsetY);
             g2.scale(scale, scale);
             g2.translate(-bounds.x, -bounds.y);
 
-<<<<<<< HEAD
-=======
                 // Étape 1 : Dessiner toutes les lignes (tronçons et itinéraire)
->>>>>>> 72df850304a31906c866e808287d8602dc37c3c3
                 for (Troncon t : carte.getTroncons()) {
                     switch (t.getEtat()) {
                         case FLUIDE: g2.setColor(Color.BLACK); break;
@@ -197,11 +167,7 @@ public class GPSSimulator extends JFrame {
                 }
             }
         };
-<<<<<<< HEAD
-        mapPanel.setPreferredSize(new Dimension(600, 600)); // Taille par défaut
-=======
         mapPanel.setPreferredSize(new Dimension(700, 500)); // Taille par défaut
->>>>>>> 72df850304a31906c866e808287d8602dc37c3c3
         mapPanel.setMinimumSize(new Dimension(300, 300));   // Taille minimale
 
         calcButton = new JButton("Calculer Itinéraire");
