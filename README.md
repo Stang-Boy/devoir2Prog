@@ -22,7 +22,7 @@ Veuillez éxecuter le fichier SimulateurGPS.java
 
  - Le bouton « Réinitialiser » : permet de réinitialiser le programme.
 
-Référence : 
+4. Références : 
 
  - http://java.sun.com/products/jfc/tsc/articles/painting/index.html
 
