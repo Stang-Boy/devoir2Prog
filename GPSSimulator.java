@@ -9,21 +9,41 @@ public class GPSSimulator extends JFrame {
     private GPS gps;
     private JPanel mapPanel;
     private JComboBox<String> startCombo, destCombo;
-    private JButton calcButton, accidentButton, trafficButton, resetButton, logsButton;
-    private JFrame logsFrame;
-    private JTextArea logsArea;
+    private JButton calcButton, accidentButton, trafficButton, resetButton, itineraireButton;
+    private JFrame itineraireFrame;
+    private JTextArea itineraireArea;
     private Vehicule vehicule;
     private javax.swing.Timer timer;
 
     public GPSSimulator() {
         super("GPS Simulator");
+        setResizable(true);
         initModel();
         initUI();
-        initLogsWindow();
+        initItineraireWindow();
         pack();
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
     }
+
+    private Rectangle calculateMapBounds() {
+        int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE;
+
+        for (Intersection i : carte.getIntersections()) {
+            minX = Math.min(minX, i.x);
+            minY = Math.min(minY, i.y);
+            maxX = Math.max(maxX, i.x);
+            maxY = Math.max(maxY, i.y);
+        }
+
+        // Ajouter une marge autour de la carte
+        int margin = 50;
+        return new Rectangle(minX - margin, minY - margin, 
+                            maxX - minX + 2 * margin, 
+                            maxY - minY + 2 * margin);
+    }
+
 
     private void initModel() {
         carte = new CarteVille();
@@ -59,7 +79,26 @@ public class GPSSimulator extends JFrame {
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setFont(new Font("Arial", Font.PLAIN, 12));
-                
+
+                // Calculer les dimensions
+            Rectangle bounds = calculateMapBounds();
+            int panelWidth = getWidth();
+            int panelHeight = getHeight();
+
+                // Calculer le facteur d'échelle
+            double scale = Math.min((double)panelWidth / bounds.width, 
+                              (double)panelHeight / bounds.height);
+
+                // Calculer le décalage pour centrer
+            int offsetX = (int)((panelWidth - bounds.width * scale) / 2);
+            int offsetY = (int)((panelHeight - bounds.height * scale) / 2);
+
+                // Appliquer la transformation
+            g2.translate(offsetX, offsetY);
+            g2.scale(scale, scale);
+            g2.translate(-bounds.x, -bounds.y);
+
+                // Étape 1 : Dessiner toutes les lignes (tronçons et itinéraire)
                 for (Troncon t : carte.getTroncons()) {
                     switch (t.getEtat()) {
                         case FLUIDE: g2.setColor(Color.BLACK); break;
@@ -70,18 +109,8 @@ public class GPSSimulator extends JFrame {
                     }
                     g2.setStroke(new BasicStroke(2));
                     g2.drawLine(t.getA().x, t.getA().y, t.getB().x, t.getB().y);
-                    int mx = (t.getA().x + t.getB().x) / 2;
-                    int my = (t.getA().y + t.getB().y) / 2;
-                    g2.setColor(Color.BLACK);
-                    g2.drawString(t.getNomRue(), mx, my);
                 }
-                
-                for (Intersection i : carte.getIntersections()) {
-                    g2.setColor(Color.BLACK);
-                    g2.fillOval(i.x - 5, i.y - 5, 10, 10);
-                    g2.drawString(String.valueOf(i.id), i.x + 6, i.y - 6);
-                }
-                
+
                 if (vehicule != null) {
                     g2.setColor(new Color(0, 0, 255, 200));
                     g2.setStroke(new BasicStroke(4));
@@ -90,17 +119,62 @@ public class GPSSimulator extends JFrame {
                         Intersection b = vehicule.itineraire.get(i+1);
                         g2.drawLine(a.x, a.y, b.x, b.y);
                     }
+                }
+
+                // Étape 2 : Dessiner les cercles des intersections
+                for (Intersection i : carte.getIntersections()) {
+                    g2.setColor(Color.BLACK);
+                    g2.fillOval(i.x - 5, i.y - 5, 10, 10);
+                }
+
+                // Étape 3 : Dessiner le véhicule (s'il existe)
+                if (vehicule != null) {
                     vehicule.draw(g2);
+                }
+
+                // Étape 4 : Dessiner tous les textes avec fond semi-transparent
+                g2.setFont(new Font("Arial", Font.PLAIN, 12));
+                for (Troncon t : carte.getTroncons()) {
+                    int mx = (t.getA().x + t.getB().x) / 2;
+                    int my = (t.getA().y + t.getB().y) / 2 - 10; // Décalage vers le haut
+                    String text = t.getNomRue();
+                    FontMetrics fm = g2.getFontMetrics();
+                    int textWidth = fm.stringWidth(text);
+                    int textHeight = fm.getHeight();
+
+                    // Dessiner un fond semi-transparent
+                    g2.setColor(new Color(255, 255, 255, 180)); // Blanc avec opacité
+                    g2.fillRect(mx - 2, my - textHeight + 3, textWidth + 4, textHeight);
+                    // Dessiner le texte
+                    g2.setColor(Color.BLACK);
+                    g2.drawString(text, mx, my);
+                }
+
+                for (Intersection i : carte.getIntersections()) {
+                    String text = String.valueOf(i.id);
+                    FontMetrics fm = g2.getFontMetrics();
+                    int textWidth = fm.stringWidth(text);
+                    int textHeight = fm.getHeight();
+                    int textX = i.x + 12; // Décalage plus important vers la droite
+                    int textY = i.y - 8;  // Légère ajuste vers le haut
+
+                    // Dessiner un fond semi-transparent
+                    g2.setColor(new Color(255, 255, 255, 180)); // Blanc avec opacité
+                    g2.fillRect(textX - 2, textY - textHeight + 3, textWidth + 4, textHeight);
+                    // Dessiner le texte
+                    g2.setColor(Color.BLACK);
+                    g2.drawString(text, textX, textY);
                 }
             }
         };
-        mapPanel.setPreferredSize(new Dimension(800, 800));
+        mapPanel.setPreferredSize(new Dimension(700, 500)); // Taille par défaut
+        mapPanel.setMinimumSize(new Dimension(300, 300));   // Taille minimale
 
         calcButton = new JButton("Calculer Itinéraire");
         accidentButton = new JButton("Ajouter Accident");
         trafficButton = new JButton("Ajouter Trafic");
         resetButton = new JButton("Réinitialiser");
-        logsButton = new JButton("Logs");
+        itineraireButton = new JButton("Itinéraire");
         startCombo = new JComboBox<>();
         destCombo = new JComboBox<>();
         for (Intersection i : carte.getIntersections()) {
@@ -112,7 +186,6 @@ public class GPSSimulator extends JFrame {
 
         calcButton.addActionListener(e -> {
             recalcItineraire();
-            log("Itinéraire calculé");
         });
         accidentButton.addActionListener(e -> {
             addAccident();
@@ -125,9 +198,15 @@ public class GPSSimulator extends JFrame {
         resetButton.addActionListener(e -> {
             clearAccidents();
             clearTrafic();
+            vehicule = null; // Supprimer l'itinéraire affiché
+            if (timer != null && timer.isRunning()) {
+                timer.stop();
+            }
+            itineraireArea.setText(""); // Réinitialiser les logs
             log("Réinitialisation complète");
+            mapPanel.repaint();
         });
-        logsButton.addActionListener(e -> logsFrame.setVisible(true));
+        itineraireButton.addActionListener(e -> itineraireFrame.setVisible(true));
 
         JPanel control = new JPanel();
         control.setLayout(new GridLayout(4, 2, 5, 5));
@@ -140,25 +219,25 @@ public class GPSSimulator extends JFrame {
         control.add(accidentButton);
         control.add(trafficButton);
         control.add(resetButton);
-        control.add(logsButton);
+        control.add(itineraireButton);
 
         getContentPane().setLayout(new BorderLayout());
         getContentPane().add(mapPanel, BorderLayout.CENTER);
         getContentPane().add(control, BorderLayout.SOUTH);
     }
 
-    private void initLogsWindow() {
-        logsFrame = new JFrame("Logs");
-        logsArea = new JTextArea(20, 40);
-        logsArea.setEditable(false);
-        logsFrame.add(new JScrollPane(logsArea));
-        logsFrame.pack();
-        logsFrame.setLocationRelativeTo(this);
-        logsFrame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+    private void initItineraireWindow() {
+        itineraireFrame = new JFrame("Itinéraire");
+        itineraireArea = new JTextArea(20, 40);
+        itineraireArea.setEditable(false);
+        itineraireFrame.add(new JScrollPane(itineraireArea));
+        itineraireFrame.pack();
+        itineraireFrame.setLocationRelativeTo(this);
+        itineraireFrame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
     }
 
     private void log(String message) {
-        logsArea.append("[" + new Date() + "] " + message + "\n");
+        itineraireArea.append(message + "\n");
     }
 
     private void addAccident() {
@@ -194,8 +273,6 @@ public class GPSSimulator extends JFrame {
         for (Troncon t : carte.getTroncons()) {
             if (t.getEtat() == EtatTroncon.ACCIDENT) t.setEtat(EtatTroncon.FLUIDE);
         }
-        recalcItineraire();
-        mapPanel.repaint();
     }
 
     private void clearTrafic() {
@@ -204,8 +281,6 @@ public class GPSSimulator extends JFrame {
                 t.setEtat(EtatTroncon.FLUIDE);
             }
         }
-        recalcItineraire();
-        mapPanel.repaint();
     }
 
     private Troncon chooseTroncon(String msg) {
@@ -221,6 +296,7 @@ public class GPSSimulator extends JFrame {
     }
 
     private void recalcItineraire() {
+        itineraireArea.setText(""); // Réinitialiser les logs
         Intersection start = carte.getIntersections().get(startCombo.getSelectedIndex());
         Intersection end = carte.getIntersections().get(destCombo.getSelectedIndex());
         gps.setDestination(end);
@@ -229,7 +305,7 @@ public class GPSSimulator extends JFrame {
         if (chemin != null && chemin.size() > 1) {
             // Generate and log navigation instructions
             List<String> instructions = generateNavigationInstructions(chemin);
-            log("Itinéraire calculé");
+            log("Voici les instructions à suivre");
             for (String instruction : instructions) {
                 log(instruction);
             }
@@ -240,7 +316,7 @@ public class GPSSimulator extends JFrame {
             timer = new javax.swing.Timer(300, e -> {
                 if (!vehicule.avancer()) {
                     timer.stop();
-                    log("Arrivé à destination");
+                    log("Vous êtes arrivé à destination");
                 }
                 mapPanel.repaint();
             });
@@ -255,56 +331,12 @@ public class GPSSimulator extends JFrame {
         List<String> instructions = new ArrayList<>();
         if (chemin.size() < 2) return instructions;
 
-        // Start instruction
-        instructions.add("Commencer à l'intersection " + chemin.get(0).id);
-
-        // Generate instructions for each segment
-        for (int i = 0; i < chemin.size() - 1; i++) {
-            Intersection current = chemin.get(i);
-            Intersection next = chemin.get(i + 1);
-
-            // Add "continuer" instruction
-            instructions.add("Continuer jusqu'à l'intersection " + next.id);
-
-            // Add turn instruction if not at the destination
-            if (i < chemin.size() - 2) {
-                Intersection nextNext = chemin.get(i + 2);
-                String direction = getTurnDirection(current, next, nextNext);
-                if (direction.equals("gauche") || direction.equals("droite")) {
-                    instructions.add(String.format("Tourner à %s à l'intersection %d", direction, next.id));
-                }
-            }
+        // Generate instruction for each intersection except the first
+        for (int i = 1; i < chemin.size(); i++) {
+            instructions.add("Aller vers le sommet " + chemin.get(i).id);
         }
 
-        // Arrival instruction
-        instructions.add("Arriver à l'intersection " + chemin.get(chemin.size() - 1).id);
         return instructions;
-    }
-
-    private String getTurnDirection(Intersection prev, Intersection current, Intersection next) {
-        // Transform to car coordinate system (north up, negate y)
-        double v1x = current.x - prev.x;
-        double v1y = -(current.y - prev.y); // Negate y to make north up
-        double v2x = next.x - current.x;
-        double v2y = -(next.y - current.y); // Negate y to make north up
-
-        // Calculate angle between vectors using atan2
-        double angle1 = Math.toDegrees(Math.atan2(v1y, v1x));
-        double angle2 = Math.toDegrees(Math.atan2(v2y, v2x));
-
-        // Calculate relative angle
-        double angle = angle2 - angle1;
-        if (angle > 180) angle -= 360;
-        if (angle < -180) angle += 360;
-
-        // Determine turn direction
-        if (Math.abs(angle) < 30) { // Straight path
-            return "tout droit";
-        } else if (angle > 0) {
-            return "droite"; // Positive angle means clockwise (right turn)
-        } else {
-            return "gauche"; // Negative angle means counterclockwise (left turn)
-        }
     }
 
     private class Vehicule {
