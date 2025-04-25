@@ -19,7 +19,7 @@ public class Main extends JFrame {
 
         bouton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                texte.setText("E1000 The minor eater");
+                texte.setText("hugyat");
             }
         });
 
