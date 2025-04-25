@@ -1,5 +1,5 @@
 /*Version Finale, 25 avril 2025, par Émile Larocque, Hugo Thivierge, Vincent Lafleur, Félix Ladouceur, Sébastien Roussel, Olivier Rossignol*/
-package GPSSimulator;
+package SimulateurGPS;
 import java.awt.*;
 import javax.swing.*;
 import java.util.*;
@@ -8,7 +8,7 @@ import java.util.List;
 /** Classe principale du simulateur GPS qui gère l'interface graphique et la logique d'interaction.
  * Cette classe étend JFrame et combine la visualisation de la carte avec les fonctionnalités de calcul d'itinéraire.
  */
-public class GPSSimulator extends JFrame {
+public class SimulateurGPS extends JFrame {
 
     /*Déclaration des composants principaux */
     private CarteVille carte;
@@ -27,7 +27,7 @@ public class GPSSimulator extends JFrame {
      * Constructeur principal qui initialise l'interface et le modèle.
      * Configure la fenêtre principale, initialise la carte et l'interface utilisateur.
      */
-    public GPSSimulator() {
+    public SimulateurGPS() {
         super("Simulateur de GPS");
         setResizable(true);
         initModel();
@@ -443,6 +443,6 @@ public class GPSSimulator extends JFrame {
      * Lance l'interface graphique dans le thread EDT de Swing.
      */
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new GPSSimulator().setVisible(true));
+        SwingUtilities.invokeLater(() -> new SimulateurGPS().setVisible(true));
     }
 }

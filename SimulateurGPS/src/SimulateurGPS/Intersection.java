@@ -1,5 +1,5 @@
 /*Version Finale, 25 avril 2025, par Émile Larocque, Hugo Thivierge, Vincent Lafleur, Félix Ladouceur, Sébastien Roussel, Olivier Rossignol*/
-package GPSSimulator;
+package SimulateurGPS;
 
 /**
  * Représente une intersection dans le réseau routier.
