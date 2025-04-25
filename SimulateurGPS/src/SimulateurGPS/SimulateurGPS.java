@@ -402,7 +402,7 @@ public class SimulateurGPS extends JFrame {
         List<Intersection> chemin = gps.calculerItineraire(start);
         
         if (chemin != null && chemin.size() > 1) {
-            // Generate and log navigation instructions
+            // Générer le journal pour la navigation et les instructions
             List<String> instructions = generateNavigationInstructions(chemin);
             log("Voici les instructions à suivre");
             for (String instruction : instructions) {
@@ -430,7 +430,7 @@ public class SimulateurGPS extends JFrame {
         List<String> instructions = new ArrayList<>();
         if (chemin.size() < 2) return instructions;
 
-        // Generate instruction for each intersection except the first
+        //Générer les instructions pour chaque intersection, sauf la première.
         for (int i = 1; i < chemin.size(); i++) {
             instructions.add("Aller vers le sommet " + chemin.get(i).id);
         }
