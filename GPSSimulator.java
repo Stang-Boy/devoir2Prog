@@ -3,114 +3,98 @@ import java.util.*;
 import java.util.List;
 import javax.swing.*;
 
-/**
- * Simulateur GPS complet :
- * - 11 intersections, 16 tronçons
- * - Gestion accidents et trafic (3 niveaux)
- * - Boutons pour ajouter/effacer
- * - Fenêtre de logs (minimisable)
- */
 public class GPSSimulator extends JFrame {
     private CarteVille carte;
     private GPS gps;
     private MapPanel mapPanel;
     private JComboBox<String> startCombo, destCombo;
-    private JButton calcButton, accidentButton, clearAccButton;
-    private JButton trafficButton, clearTraffButton, logsButton;
+    private JButton calcButton, accidentButton, resetButton, logsButton;
     private JFrame logsFrame;
     private JTextArea logsArea;
 
-public GPSSimulator() {
-    super("GPS Simulator");
-    initModel();
-    initUI();
-    initLogsWindow();
-    pack();
-    setLocationRelativeTo(null);
-    setDefaultCloseOperation(EXIT_ON_CLOSE);
-}
-
-private void initModel() {
-    carte = new CarteVille();
-    int[][] coords = {
-        {100,400},{250,200},{250,400},{250,600},
-        {400,200},{400,400},{400,600},
-        {550,200},{550,400},{550,600},
-        {700,400}
-    };
-    for (int i = 0; i < coords.length; i++) {
-        carte.ajouterIntersection(new Intersection(i, coords[i][0], coords[i][1]));
+    public GPSSimulator() {
+        super("GPS Simulator");
+        initModel();
+        initUI();
+        initLogsWindow();
+        pack();
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
     }
-    int[][] edges = {
-        {1,2},{2,3},{4,5},{5,6},{7,8},{8,9},
-        {2,5},{5,8},{1,4},{4,7},{3,6},{6,9},
-        {0,1},{0,3},{10,9},{10,7}
-    };
-    for (int[] e : edges) {
-        Intersection a = carte.getIntersections().get(e[0]);
-        Intersection b = carte.getIntersections().get(e[1]);
-        double dist = a.distanceVers(b);
-        carte.ajouterTroncon(new Troncon(a, b, dist, "R" + e[0] + "-" + e[1]));
+
+    private void initModel() {
+        carte = new CarteVille();
+        int[][] coords = {
+            {100,400},{250,200},{250,400},{250,600},
+            {400,200},{400,400},{400,600},
+            {550,200},{550,400},{550,600},
+            {700,400}
+        };
+        for (int i = 0; i < coords.length; i++) {
+            carte.ajouterIntersection(new Intersection(i, coords[i][0], coords[i][1]));
+        }
+        int[][] edges = {
+            {1,2},{2,3},{4,5},{5,6},{7,8},{8,9},
+            {2,5},{5,8},{1,4},{4,7},{3,6},{6,9},
+            {0,1},{0,3},{10,9},{10,7}
+        };
+        for (int[] e : edges) {
+            Intersection a = carte.getIntersections().get(e[0]);
+            Intersection b = carte.getIntersections().get(e[1]);
+            double dist = a.distanceVers(b);
+            carte.ajouterTroncon(new Troncon(a, b, dist, "R" + e[0] + "-" + e[1]));
+        }
+        for (Troncon t : carte.getTroncons()) t.setEtat(EtatTroncon.FLUIDE);
+        gps = new GPS(carte);
     }
-    for (Troncon t : carte.getTroncons()) t.setEtat(EtatTroncon.FLUIDE);
-    gps = new GPS(carte);
-}
 
+    private void initUI() {
+        mapPanel = new MapPanel();
+        mapPanel.setPreferredSize(new Dimension(800, 800));
+        calcButton = new JButton("Calculer Itinéraire");
+        accidentButton = new JButton("Ajouter Accident");
+        resetButton = new JButton("Réinitialiser");
+        logsButton = new JButton("Logs");
+        startCombo = new JComboBox<>();
+        destCombo = new JComboBox<>();
+        for (Intersection i : carte.getIntersections()) {
+            startCombo.addItem("Départ " + i.id);
+            destCombo.addItem("Destination " + i.id);
+        }
+        startCombo.setSelectedIndex(0);
+        destCombo.setSelectedIndex(10);
 
-private void initUI() {
-    mapPanel = new MapPanel();
-    mapPanel.setPreferredSize(new Dimension(800, 800));
-    calcButton = new JButton("Calculer Itinéraire");
-    accidentButton = new JButton("Ajouter Accident");
-    clearAccButton = new JButton("Effacer Accidents");
-    trafficButton = new JButton("Ajouter Trafic");
-    clearTraffButton = new JButton("Effacer Trafic");
-    logsButton = new JButton("Logs");
-    startCombo = new JComboBox<>();
-    destCombo = new JComboBox<>();
-    for (Intersection i : carte.getIntersections()) {
-        startCombo.addItem("Départ " + i.id);
-        destCombo.addItem("Destination " + i.id);
+        calcButton.addActionListener(e -> {
+            recalcItineraire();
+            log("Itinéraire calculé");
+        });
+        accidentButton.addActionListener(e -> {
+            addAccident();
+            log("Accident ajouté");
+        });
+        resetButton.addActionListener(e -> {
+            clearAccidents();
+            clearTrafic();
+            log("Réinitialisation complète");
+        });
+        logsButton.addActionListener(e -> logsFrame.setVisible(true));
+
+        JPanel control = new JPanel();
+        control.setLayout(new GridLayout(3, 2, 5, 5));
+        control.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        control.add(new JLabel("Départ:"));
+        control.add(startCombo);
+        control.add(new JLabel("Destination:"));
+        control.add(destCombo);
+        control.add(calcButton);
+        control.add(accidentButton);
+        control.add(resetButton);
+        control.add(logsButton);
+
+        getContentPane().setLayout(new BorderLayout());
+        getContentPane().add(mapPanel, BorderLayout.CENTER);
+        getContentPane().add(control, BorderLayout.SOUTH);
     }
-    startCombo.setSelectedIndex(0);
-    destCombo.setSelectedIndex(10);
-    calcButton.addActionListener(e -> {
-        recalcItineraire();
-        log("Itinéraire calculé");
-    });
-    accidentButton.addActionListener(e -> {
-        addAccident();
-        log("Accident ajouté");
-    });
-    clearAccButton.addActionListener(e -> {
-        clearAccidents();
-        log("Accidents effacés");
-    });
-    trafficButton.addActionListener(e -> {
-        addTrafic();
-        log("Trafic ajouté");
-    });
-    clearTraffButton.addActionListener(e -> {
-        clearTrafic();
-        log("Trafic effacé");
-    });
-    logsButton.addActionListener(e -> logsFrame.setVisible(true));
-    JPanel control = new JPanel();
-    control.add(new JLabel("Départ:"));
-    control.add(startCombo);
-    control.add(new JLabel("Destination:"));
-    control.add(destCombo);
-    control.add(calcButton);
-    control.add(accidentButton);
-    control.add(clearAccButton);
-    control.add(trafficButton);
-    control.add(clearTraffButton);
-    control.add(logsButton);
-    getContentPane().setLayout(new BorderLayout());
-    getContentPane().add(mapPanel, BorderLayout.CENTER);
-    getContentPane().add(control, BorderLayout.SOUTH);
-}
-
 
     private void initLogsWindow() {
         logsFrame = new JFrame("Logs");
@@ -126,7 +110,6 @@ private void initUI() {
         logsArea.append("[" + new Date() + "] " + message + "\n");
     }
 
-
     private void addAccident() {
         Troncon t = chooseTroncon("Choisissez un tronçon (accident) :");
         if (t != null) {
@@ -140,22 +123,6 @@ private void initUI() {
             if (t.getEtat() == EtatTroncon.ACCIDENT) t.setEtat(EtatTroncon.FLUIDE);
         }
         mapPanel.repaint();
-    }
-
-    private void addTrafic() {
-        Troncon t = chooseTroncon("Choisissez un tronçon (trafic) :");
-        if (t == null) return;
-        String[] niveaux = {"Faible", "Modéré", "Intense"};
-        String sel = (String) JOptionPane.showInputDialog(
-                this, "Intensité du trafic :", "Ajouter Trafic",
-                JOptionPane.PLAIN_MESSAGE, null, niveaux, niveaux[0]
-        );
-        if (sel != null) {
-            EtatTroncon et = sel.equals("Faible") ? EtatTroncon.FAIBLE :
-                    sel.equals("Modéré") ? EtatTroncon.MODERE : EtatTroncon.INTENSE;
-            t.setEtat(et);
-            mapPanel.repaint();
-        }
     }
 
     private void clearTrafic() {
@@ -179,17 +146,12 @@ private void initUI() {
         return null;
     }
 
-    
     private void recalcItineraire() {
         Intersection start = carte.getIntersections().get(startCombo.getSelectedIndex());
         gps.setDestination(carte.getIntersections().get(destCombo.getSelectedIndex()));
         gps.calculerItineraire(start);
         mapPanel.repaint();
     }
-    
-    
-    
-
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new GPSSimulator().setVisible(true));
@@ -212,13 +174,13 @@ private void initUI() {
                     case FAIBLE: c = Color.YELLOW; break;
                     case MODERE: c = Color.ORANGE; break;
                     case INTENSE: c = Color.RED; break;
-                    case ACCIDENT:c = Color.MAGENTA;break;
+                    case ACCIDENT: c = Color.MAGENTA; break;
                     default: c = Color.BLACK;
                 }
                 g2.setColor(c);
                 g2.setStroke(new BasicStroke(4));
                 g2.drawLine(x1, y1, x2, y2);
-                String lbl = t.getNomRue() + "(" + String.format("%.1f", t.distance) + ")";
+                String lbl = String.format("%.1f", t.distance);
                 g2.setColor(Color.BLACK);
                 g2.drawString(lbl, (x1 + x2)/2, (y1 + y2)/2 - 5);
             }
@@ -226,6 +188,7 @@ private void initUI() {
             g2.setColor(Color.BLACK);
             for (Intersection i : carte.getIntersections()) {
                 g2.fillOval(i.x-5, i.y-5, 10, 10);
+                g2.drawString(String.valueOf(i.id), i.x + 10, i.y - 10);
             }
             // itinéraire
             g2.setColor(Color.BLUE);
@@ -268,7 +231,7 @@ private void initUI() {
                 case FAIBLE:  return 1.2;
                 case MODERE:  return 1.5;
                 case INTENSE: return 2.0;
-                case ACCIDENT:return Double.POSITIVE_INFINITY;
+                case ACCIDENT: return Double.POSITIVE_INFINITY;
                 default:      return 1.0;
             }
         }
